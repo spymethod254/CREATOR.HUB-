@@ -1,13 +1,17 @@
 import sqlite3 from 'sqlite3';
 import { open, Database } from 'sqlite';
+import path from 'path';
 
 let dbInstance: Database | null = null;
 
 export async function getDatabase(): Promise<Database> {
   if (dbInstance) return dbInstance;
 
+  // Render fix: Use /tmp/ for writable storage. Local dev uses ./ 
+  const dbPath = process.env.DATABASE_PATH || '/tmp/creator_platform.db';
+
   dbInstance = await open({
-    filename: './creator_platform.db',
+    filename: dbPath,
     driver: sqlite3.Database
   });
 
@@ -25,7 +29,7 @@ async function createDatabaseTables(db: Database) {
       username TEXT UNIQUE NOT NULL,
       email TEXT UNIQUE NOT NULL,
       password_hash TEXT,
-      phone_number TEXT UNIQUE, -- ✅ FIX: Made nullable or empty string handled to prevent registration crashes
+      phone_number TEXT UNIQUE,
       profile_picture_url TEXT DEFAULT 'default_avatar.png',
       date_of_birth TEXT,
       work_status TEXT CHECK(work_status IN ('Available', 'Busy', 'Employed', 'Freelance')) DEFAULT 'Available',
@@ -87,10 +91,10 @@ async function createDatabaseTables(db: Database) {
   // 6. MESSAGES STREAM (Unified Key Aliases)
   await db.exec(`
     CREATE TABLE IF NOT EXISTS messages (
-      message_id INTEGER PRIMARY KEY AUTOINCREMENT, -- ✅ Synced safely with server.ts logic constraints
+      message_id INTEGER PRIMARY KEY AUTOINCREMENT,
       conversation_id INTEGER,
       sender_id INTEGER,
-      recipient_id INTEGER, -- ✅ FIX: Explicit tracking layer for peer-to-peer delivery lookup routines
+      recipient_id INTEGER,
       message_type TEXT CHECK(message_type IN ('text', 'image', 'video', 'audio', 'voice_note')) DEFAULT 'text',
       file_url TEXT,
       is_view_once INTEGER DEFAULT 0,
