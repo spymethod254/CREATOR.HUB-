@@ -9,7 +9,7 @@ export default function UserProfile() {
   const navigate = useNavigate();
   const { profileId } = useParams();
 
-  const currentUserId = localStorage.getItem('userId') || '1';
+  const currentUserId = localStorage.getItem('userId');
   const targetProfileId = profileId || currentUserId;
 
   const [creator, setCreator] = useState<any>(null);
@@ -25,8 +25,22 @@ export default function UserProfile() {
 
   const [userPosts, setUserPosts] = useState<any[]>([]);
 
+  useEffect(() => {
+    // Guard: redirect to login if no userId
+    if (!currentUserId) {
+      navigate('/login');
+      return;
+    }
+    if (!targetProfileId) {
+      navigate('/login');
+      return;
+    }
+    fetchProfileData();
+  }, [targetProfileId, currentUserId]);
+
   const fetchProfileData = async () => {
     try {
+      setLoading(true);
       const userRes = await fetch(`/api/users/${targetProfileId}`);
       const userData = await userRes.json();
 
@@ -66,17 +80,13 @@ export default function UserProfile() {
 
       setEditWorkStatus(profile.work_status || 'Available');
       setEditRelationship(profile.relationship_status || 'Private');
-      setLoading(false);
     } catch (err) {
       console.error('Error mounting profile details:', err);
       setCreator(null);
+    } finally {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    fetchProfileData();
-  }, [targetProfileId, currentUserId]);
 
   const handleSaveChanges = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -130,7 +140,7 @@ export default function UserProfile() {
   };
 
   const handleFollowActionToggle = async () => {
-    if (!creator) return;
+    if (!creator || !currentUserId) return;
     try {
       const response = await fetch('/api/creators/follow', {
         method: 'POST',
@@ -155,7 +165,7 @@ export default function UserProfile() {
   if (loading) return <div className="min-h-screen bg-slate-900 text-slate-400 flex items-center justify-center font-mono">Loading Profile...</div>;
   if (!creator) return <div className="min-h-screen bg-slate-900 text-rose-400 flex items-center justify-center font-bold">Profile record missing.</div>;
 
-  const isProfileOwner = currentUserId.toString() === creator.user_id.toString();
+  const isProfileOwner = currentUserId?.toString() === creator.user_id.toString();
   const followButtonClass = isFollowing ? 'text-xs font-bold px-4 py-2 rounded-xl transition shadow-sm bg-slate-700 text-slate-300' : 'text-xs font-bold px-4 py-2 rounded-xl transition shadow-sm bg-indigo-500 text-white hover:bg-indigo-600';
   const feedTabClass = activeTab === 'posts' ? 'pb-3 px-4 border-b-2 transition border-indigo-500 text-indigo-400' : 'pb-3 px-4 border-b-2 transition border-transparent text-slate-400 hover:text-slate-200';
   const aboutTabClass = activeTab === 'about' ? 'pb-3 px-4 border-b-2 transition border-indigo-500 text-indigo-400' : 'pb-3 px-4 border-b-2 transition border-transparent text-slate-400 hover:text-slate-200';
@@ -261,7 +271,7 @@ export default function UserProfile() {
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Relationship Status</label>
-                <select value={editRelationship} onChange={(e) => setEditRelationship(e.target.value)} className="w-full bg-slate-700 border-slate-600 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <select value={editRelationship} onChange={(e) => setEditRelationship(e.target.value)} className="w-full bg-slate-700 border-slate-600 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:outline-none focus:ring-2 focus:ring-indigo-500">
                   <option value="Private">Private</option>
                   <option value="Public">Public</option>
                 </select>
