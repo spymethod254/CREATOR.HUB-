@@ -9,12 +9,13 @@ import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <BrowserRouter>
+    <BrowserRouter basename="/">
       <Routes>
         <Route path="/" element={<Homepage />} />
         <Route path="/login" element={<RegisterLogin />} />
         <Route path="/chat" element={<ChatWindow />} />
         <Route path="/profile" element={<UserProfile />} />
+        <Route path="/profile/:profileId" element={<UserProfile />} />
       </Routes>
     </BrowserRouter>
   </React.StrictMode>
