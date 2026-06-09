@@ -7,14 +7,12 @@ export async function registerUser(req: Request, res: Response) {
   try {
     const { username, email, password, phone_number, work_status, relationship_status } = req.body;
 
-    // Fast validation check for required fields
     if (!username || !email || !password || !phone_number) {
       return res.status(400).json({ error: "Missing required registration parameters." });
     }
 
     const db = await getDatabase();
 
-    // Prevent duplicates: Ensure username, email, or phone doesn't exist
     const existingUser = await db.get(
       'SELECT username, email, phone_number FROM users WHERE username = ? OR email = ? OR phone_number = ?',
       [username, email, phone_number]
@@ -26,18 +24,15 @@ export async function registerUser(req: Request, res: Response) {
       if (existingUser.phone_number === phone_number) return res.status(400).json({ error: "Mobile number is already linked to an account." });
     }
 
-    // Securely hash the password using bcrypt before writing to SQLite
     const saltRounds = 10;
     const passwordHash = await bcrypt.hash(password, saltRounds);
 
-    // Write client profile records into SQLite3
     const result = await db.run(
       `INSERT INTO users (username, email, password_hash, phone_number, work_status, relationship_status) 
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [username, email, passwordHash, phone_number, work_status || 'Available', relationship_status || 'Single']
+       VALUES (?, ?, ?)`,
+      [username, email, passwordHash, phone_number, work_status || 'Available', relationship_status || 'Private']
     );
 
-    // ✅ FIXED BLOCKS: Properly structured object matching frontend session formats
     return res.status(201).json({ 
       success: true, 
       message: "Creator account successfully registered!",
@@ -48,7 +43,7 @@ export async function registerUser(req: Request, res: Response) {
     console.error("🔴 Registration Error:", error);
     return res.status(500).json({ error: "Internal server registry loop crash." });
   }
-} // <-- This explicit bracket guarantees registerUser closes cleanly!
+}
 
 // 2. LOGIN USER CONTROLLER
 export async function loginUser(req: Request, res: Response) {
@@ -61,7 +56,6 @@ export async function loginUser(req: Request, res: Response) {
 
     const db = await getDatabase();
 
-    // Flexible lookups that handle input credentials seamlessly across both parameters
     const user = await db.get(
       'SELECT user_id, username, password_hash, restriction_status FROM users WHERE username = ? OR email = ?', 
       [email, email]
@@ -71,18 +65,15 @@ export async function loginUser(req: Request, res: Response) {
       return res.status(401).json({ error: "Invalid credentials." });
     }
 
-    // Specification Safeguard Check: Block banned profiles
     if (user.restriction_status === 'Banned') {
       return res.status(403).json({ error: "This account has been permanently banned from the network." });
     }
 
-    // Compare frontend raw entry string against database bcrypt hash
     const match = await bcrypt.compare(password, user.password_hash);
     if (!match) {
       return res.status(401).json({ error: "Invalid credentials." });
     }
 
-    // Set online indicators
     await db.run('UPDATE users SET is_online = 1, last_seen = CURRENT_TIMESTAMP WHERE user_id = ?', [user.user_id]);
 
     return res.status(200).json({
