@@ -20,36 +20,35 @@ export default function RegisterLogin() {
   };
 
   const handleGoogleAuth = () => {
-    window.location.href = 'http://localhost:5000/auth/google';
+    window.location.href = '/auth/google';
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
-    
+
     const submissionPayload = isLogin 
       ? { email: formData.email, password: formData.password }
       : formData;
 
     try {
-      const response = await fetch(`http://localhost:5000${endpoint}`, {
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(submissionPayload)
       });
-      
+
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.error || 'Authentication process failed.');
       }
-      
+
       alert(data.message);
-      
+
       if (data.success && data.user) {
-        // ✅ FIXED: Safely parsing keys inside the nested data.user object
-        const trueId = data.user.user_id || data.user.userId;
-        
+        const trueId = data.user_id || data.userId;
+
         if (trueId) {
           localStorage.setItem('userId', trueId.toString());
           localStorage.setItem('username', data.user.username || '');
@@ -67,9 +66,9 @@ export default function RegisterLogin() {
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex items-center justify-center p-4 font-sans">
-      <div className="bg-slate-800 w-full max-w-md rounded-2xl border border-slate-700 shadow-xl p-6 md:p-8">
+      <div className="bg-slate-800 w-full max-w-md rounded-2xl border-slate-700 shadow-xl p-6 md:p-8">
 
-        <div className="flex border-b border-slate-700 mb-6">
+        <div className="flex border-b-slate-700 mb-6">
           <button type="button" onClick={() => setIsLogin(true)} className={`flex-1 pb-3 text-sm font-bold border-b-2 transition ${isLogin ? 'border-indigo-500 text-white' : 'border-transparent text-slate-400 hover:text-slate-200'}`}>Sign In</button>
           <button type="button" onClick={() => setIsLogin(false)} className={`flex-1 pb-3 text-sm font-bold border-b-2 transition ${!isLogin ? 'border-indigo-500 text-white' : 'border-transparent text-slate-400 hover:text-slate-200'}`}>Create Account</button>
         </div>
@@ -90,9 +89,9 @@ export default function RegisterLogin() {
         </button>
 
         <div className="flex items-center my-4 text-xs text-slate-500 font-medium">
-          <div className="flex-1 border-t border-slate-700/60"></div>
+          <div className="flex-1 border-t-slate-700/60"></div>
           <span className="px-3">OR USE EMAIL</span>
-          <div className="flex-1 border-t border-slate-700/60"></div>
+          <div className="flex-1 border-t-slate-700/60"></div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -110,7 +109,7 @@ export default function RegisterLogin() {
             <label className="block text-xs font-bold text-slate-400 mb-1">Email Address</label>
             <div className="relative">
               <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500"><Mail size={16}/></span>
-              <input type="email" name="email" required value={formData.email} onChange={formData.email ? handleInputChange : handleInputChange} className="w-full bg-slate-700 rounded-xl pl-10 pr-4 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+              <input type="email" name="email" required value={formData.email} onChange={handleInputChange} className="w-full bg-slate-700 rounded-xl pl-10 pr-4 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
             </div>
           </div>
 
@@ -144,7 +143,6 @@ export default function RegisterLogin() {
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-400 mb-1">Relationship</label>
-                {/* ✅ FIXED: Removed duplicate value attribute */}
                 <select name="relationship_status" value={formData.relationship_status} onChange={handleInputChange} className="w-full bg-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                   <option value="Private">Private</option>
                   <option value="Public">Public</option>
