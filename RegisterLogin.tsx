@@ -2,9 +2,12 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, User, Phone } from 'lucide-react';
 
+const API_URL = import.meta.env.VITE_API_URL || process.env.REACT_APP_API_URL || '';
+
 export default function RegisterLogin() {
   const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     username: '',
@@ -20,12 +23,13 @@ export default function RegisterLogin() {
   };
 
   const handleGoogleAuth = () => {
-    window.location.href = '/auth/google';
+    window.location.href = `${API_URL}/auth/google`;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
+    setIsLoading(true);
+    const endpoint = `${API_URL}/api/auth/${isLogin ? 'login' : 'register'}`;
 
     const submissionPayload = isLogin 
       ? { email: formData.email, password: formData.password }
@@ -44,23 +48,27 @@ export default function RegisterLogin() {
         throw new Error(data.error || 'Authentication process failed.');
       }
 
-      alert(data.message);
-
       if (data.success && data.user) {
-        const trueId = data.user_id || data.userId;
+        // Handle both user_id and userId from backend
+        const userId = data.user_id || data.userId || data.user_id || data.userId;
+        const username = data.user.username || '';
 
-        if (trueId) {
-          localStorage.setItem('userId', trueId.toString());
-          localStorage.setItem('username', data.user.username || '');
-          window.location.href = '/'; 
+        if (userId) {
+          localStorage.setItem('userId', userId.toString());
+          localStorage.setItem('username', username);
+          navigate('/'); // Use navigate instead of window.location
         } else {
-          alert("Authentication error: User ID token missing.");
+          alert("Authentication error: User ID missing from server.");
         }
       } else if (data.success && !isLogin) {
+        alert(data.message || 'Registration successful! Please login.');
         setIsLogin(true); 
+        setFormData({...formData, password: ''});
       }
     } catch (err: any) {
       alert(err.message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -68,7 +76,7 @@ export default function RegisterLogin() {
     <div className="min-h-screen bg-slate-900 text-slate-100 flex items-center justify-center p-4 font-sans">
       <div className="bg-slate-800 w-full max-w-md rounded-2xl border-slate-700 shadow-xl p-6 md:p-8">
 
-        <div className="flex border-b-slate-700 mb-6">
+        <div className="flex border-b border-slate-700 mb-6">
           <button type="button" onClick={() => setIsLogin(true)} className={`flex-1 pb-3 text-sm font-bold border-b-2 transition ${isLogin ? 'border-indigo-500 text-white' : 'border-transparent text-slate-400 hover:text-slate-200'}`}>Sign In</button>
           <button type="button" onClick={() => setIsLogin(false)} className={`flex-1 pb-3 text-sm font-bold border-b-2 transition ${!isLogin ? 'border-indigo-500 text-white' : 'border-transparent text-slate-400 hover:text-slate-200'}`}>Create Account</button>
         </div>
@@ -89,9 +97,9 @@ export default function RegisterLogin() {
         </button>
 
         <div className="flex items-center my-4 text-xs text-slate-500 font-medium">
-          <div className="flex-1 border-t-slate-700/60"></div>
+          <div className="flex-1 border-t border-slate-700/60"></div>
           <span className="px-3">OR USE EMAIL</span>
-          <div className="flex-1 border-t-slate-700/60"></div>
+          <div className="flex-1 border-t border-slate-700/60"></div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -151,8 +159,8 @@ export default function RegisterLogin() {
             </div>
           )}
 
-          <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-bold text-sm py-2.5 rounded-xl transition shadow-md flex items-center justify-center gap-2 mt-2">
-            {isLogin ? 'Sign In to Account' : 'Register Account'}
+          <button type="submit" disabled={isLoading} className="w-full bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 disabled:bg-slate-700 text-white font-bold text-sm py-2.5 rounded-xl transition shadow-md flex items-center justify-center gap-2 mt-2">
+            {isLoading ? 'Processing...' : isLogin ? 'Sign In to Account' : 'Register Account'}
           </button>
         </form>
 
