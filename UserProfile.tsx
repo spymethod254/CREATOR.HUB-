@@ -8,7 +8,7 @@ import {
 export default function UserProfile() {
   const navigate = useNavigate();
   const { profileId } = useParams();
-  
+
   const currentUserId = localStorage.getItem('userId') || '1';
   const targetProfileId = profileId || currentUserId;
 
@@ -16,19 +16,18 @@ export default function UserProfile() {
   const [isFollowing, setIsFollowing] = useState(false);
   const [activeTab, setActiveTab] = useState('posts');
   const [loading, setLoading] = useState(true);
-  
-  // Modal & File References
+
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [editWorkStatus, setEditWorkStatus] = useState('Available');
   const [editRelationship, setEditRelationship] = useState('Private');
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const [userPosts, setUserPosts] = useState<any[]>([]);
 
   const fetchProfileData = async () => {
     try {
-      const userRes = await fetch(`http://localhost:5000/api/users/${targetProfileId}`);
+      const userRes = await fetch(`/api/users/${targetProfileId}`);
       const userData = await userRes.json();
 
       if (!userRes.ok || !userData.profile) {
@@ -37,16 +36,16 @@ export default function UserProfile() {
 
       const profile = userData.profile;
 
-      const statsRes = await fetch(`http://localhost:5000/api/creators/${targetProfileId}/follow-stats`);
+      const statsRes = await fetch(`/api/creators/${targetProfileId}/follow-stats`);
       const statsData = await statsRes.json();
 
       if (currentUserId !== targetProfileId) {
-        const checkFollow = await fetch(`http://localhost:5000/api/creators/is-following/${currentUserId}/${targetProfileId}`);
+        const checkFollow = await fetch(`/api/creators/is-following/${currentUserId}/${targetProfileId}`);
         const followData = await checkFollow.json();
         setIsFollowing(followData.following);
       }
 
-      const postsRes = await fetch(`http://localhost:5000/api/posts`);
+      const postsRes = await fetch(`/api/posts`);
       if (postsRes.ok) {
         const allPosts = await postsRes.json();
         const filteredPosts = allPosts.filter((p: any) => p.user_id.toString() === targetProfileId.toString());
@@ -82,7 +81,7 @@ export default function UserProfile() {
   const handleSaveChanges = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch(`http://localhost:5000/api/users/${targetProfileId}`, {
+      const response = await fetch(`/api/users/${targetProfileId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -98,7 +97,6 @@ export default function UserProfile() {
     }
   };
 
-  // ✅ NEW: Multipart Form Avatar Uploader connected directly to disk
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -107,15 +105,14 @@ export default function UserProfile() {
     formData.append('file', file);
 
     try {
-      const uploadRes = await fetch('http://localhost:5000/api/chat/upload', {
+      const uploadRes = await fetch('/api/chat/upload', {
         method: 'POST',
         body: formData
       });
       const uploadData = await uploadRes.json();
       if (!uploadRes.ok) throw new Error(uploadData.error);
 
-      // Save picture pointer URL string onto backend row schema
-      const updateRes = await fetch(`http://localhost:5000/api/users/${targetProfileId}`, {
+      const updateRes = await fetch(`/api/users/${targetProfileId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -135,7 +132,7 @@ export default function UserProfile() {
   const handleFollowActionToggle = async () => {
     if (!creator) return;
     try {
-      const response = await fetch('http://localhost:5000/api/creators/follow', {
+      const response = await fetch('/api/creators/follow', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ followerId: Number(currentUserId), followingId: creator.user_id })
@@ -165,7 +162,7 @@ export default function UserProfile() {
   const firstLetter = creator.username ? creator.username.charAt(0).toUpperCase() : 'C';
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 font-sans pb-12 relative">
+    <div className="min-h-screen bg-slate-900 text-slate-100 font-sans pb-20 md:pb-12 relative">
       <input type="file" ref={fileInputRef} accept="image/*" className="hidden" onChange={handleAvatarUpload} />
       <header className="bg-slate-800 border-b border-slate-700 px-4 py-3 sticky top-0 z-50 flex items-center gap-3">
         <button type="button" onClick={() => navigate(-1)} className="text-slate-400 hover:text-white transition"><ArrowLeft size={20} /></button>
@@ -173,9 +170,8 @@ export default function UserProfile() {
       </header>
 
       <div className="max-w-3xl mx-auto px-4 pt-6">
-        <div className="flex flex-col sm:flex-row items-center gap-5 bg-slate-800 p-6 rounded-2xl border border-slate-700/80 shadow-md">
-          
-          {/* Dynamic Avatar Container Panel with Image Toggle Support */}
+        <div className="flex flex-col sm:flex-row items-center gap-5 bg-slate-800 p-6 rounded-2xl border-slate-700/80 shadow-md">
+
           <div className="relative shadow-lg group">
             {creator.profile_picture_url ? (
               <img src={creator.profile_picture_url} alt="Profile" className="w-24 h-24 rounded-full object-cover border-4 border-indigo-500 shadow-inner" />
@@ -203,19 +199,19 @@ export default function UserProfile() {
           </div>
         </div>
 
-        <div className="flex border-b border-slate-800 mt-6 text-sm font-bold">
-          <button type="button" onClick={() => setActiveTab('posts')} className={feedTabClass}>Feed Updates</button>
-          <button type="button" onClick={() => setActiveTab('about')} className={aboutTabClass}>About Matrix</button>
+        <div className="flex border-b border-slate-800 mt-6 text-sm font-bold overflow-x-auto">
+          <button type="button" onClick={() => setActiveTab('posts')} className={`${feedTabClass} whitespace-nowrap`}>Feed Updates</button>
+          <button type="button" onClick={() => setActiveTab('about')} className={`${aboutTabClass} whitespace-nowrap`}>About Matrix</button>
         </div>
 
         <div className="mt-5">
           {activeTab === 'posts' && (
             <div className="space-y-4">
               {userPosts.length === 0 ? (
-                <div className="text-center py-8 text-sm text-slate-500">No feed updates published yet by this creator.</div>
+                <div className="text-center py-16 text-sm text-slate-500">No feed updates published yet by this creator.</div>
               ) : (
                 userPosts.map((post: any) => (
-                  <article key={post.post_id} className="bg-slate-800 rounded-2xl border border-slate-700 p-4 shadow-sm">
+                  <article key={post.post_id} className="bg-slate-800 rounded-2xl border-slate-700 p-4 shadow-sm">
                     <div className="flex items-center gap-2 mb-2 text-xs text-slate-400"><span className="font-bold text-slate-200">{creator.username}</span> • <span>Post #{post.post_id}</span></div>
                     <p className="text-sm text-slate-300 mb-3">{post.content}</p>
                     <div className="flex gap-4 text-xs text-slate-500 font-semibold">
@@ -230,18 +226,18 @@ export default function UserProfile() {
 
           {activeTab === 'about' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-slate-800 rounded-2xl border border-slate-700 p-4 shadow-sm space-y-3">
+              <div className="bg-slate-800 rounded-2xl border-slate-700 p-4 shadow-sm space-y-3">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">User Details</h3>
                 <div className="space-y-2 text-sm text-slate-300">
-                  <div className="flex items-center gap-2"><Mail size={16} className="text-slate-400" /> {creator.email}</div>
-                  <div className="flex items-center gap-2"><Phone size={16} className="text-slate-400" /> {creator.phone_number}</div>
+                  <div className="flex items-center gap-2 break-all"><Mail size={16} className="text-slate-400 shrink-0" /> {creator.email}</div>
+                  <div className="flex items-center gap-2"><Phone size={16} className="text-slate-400 shrink-0" /> {creator.phone_number}</div>
                 </div>
               </div>
-              <div className="bg-slate-800 rounded-2xl border border-slate-700 p-4 shadow-sm space-y-3">
+              <div className="bg-slate-800 rounded-2xl border-slate-700 p-4 shadow-sm space-y-3">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Status Information</h3>
                 <div className="space-y-2 text-sm text-slate-300">
-                  <div className="flex items-center gap-2"><Briefcase size={16} className="text-slate-400" /> Work: <span className="text-indigo-400 font-semibold">{creator.work_status}</span></div>
-                  <div className="flex items-center gap-2"><Heart size={16} className="text-slate-400" /> Matrix: <span className="text-indigo-400 font-semibold">{creator.relationship_status}</span></div>
+                  <div className="flex items-center gap-2"><Briefcase size={16} className="text-slate-400 shrink-0" /> Work: <span className="text-indigo-400 font-semibold">{creator.work_status}</span></div>
+                  <div className="flex items-center gap-2"><Heart size={16} className="text-slate-400 shrink-0" /> Matrix: <span className="text-indigo-400 font-semibold">{creator.relationship_status}</span></div>
                 </div>
               </div>
             </div>
@@ -251,13 +247,13 @@ export default function UserProfile() {
 
       {isSettingsOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-800 border border-slate-700 rounded-2xl max-w-sm w-full p-6 shadow-2xl relative">
+          <div className="bg-slate-800 border-slate-700 rounded-2xl max-w-sm w-full p-6 shadow-2xl relative">
             <button type="button" onClick={() => setIsSettingsOpen(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white transition"><X size={18} /></button>
             <h2 className="text-lg font-black text-white tracking-wide mb-4">Edit Profile Settings</h2>
             <form onSubmit={handleSaveChanges} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Work Status</label>
-                <select value={editWorkStatus} onChange={(e) => setEditWorkStatus(e.target.value)} className="w-full bg-slate-700 border border-slate-600 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <select value={editWorkStatus} onChange={(e) => setEditWorkStatus(e.target.value)} className="w-full bg-slate-700 border-slate-600 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                   <option value="Available">Available</option>
                   <option value="Busy">Busy</option>
                   <option value="Freelance">Freelance</option>
@@ -265,7 +261,7 @@ export default function UserProfile() {
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Relationship Status</label>
-                <select value={editRelationship} onChange={(e) => setEditRelationship(e.target.value)} className="w-full bg-slate-700 border border-slate-600 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <select value={editRelationship} onChange={(e) => setEditRelationship(e.target.value)} className="w-full bg-slate-700 border-slate-600 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                   <option value="Private">Private</option>
                   <option value="Public">Public</option>
                 </select>
