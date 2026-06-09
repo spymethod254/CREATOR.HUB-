@@ -10,7 +10,7 @@ import { updateUserRestriction, getFlaggedAccounts } from './moderationControlle
 import { getDatabase } from './db';
 
 const app = express();
-app.use(cors());
+app.use(cors({ origin: '*', methods: ['GET', 'POST'] }));
 app.use(express.json()); 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
@@ -39,7 +39,7 @@ app.get('/api/users', async (req: Request, res: Response) => {
 
 app.post('/api/chat/upload', upload.single('file'), (req: any, res: Response) => {
   if (!req.file) return res.status(400).json({ error: "No media file sent to asset node." });
-  const fileUrl = `http://localhost:5000/uploads/${req.file.filename}`;
+  const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
   return res.json({ success: true, fileUrl });
 });
 
@@ -86,8 +86,7 @@ app.get('/api/chat/messages/:senderId/:recipientId', async (req: Request, res: R
   try {
     const { senderId, recipientId } = req.params;
     const db = await getDatabase();
-    
-    // Grabbing fields defensively. If message_type throws, fallback cleanly to type column structure
+
     const messages = await db.all(
       `SELECT message_id as dbId, sender_id as senderId, file_url as content, message_type as type, is_view_once as isViewOnce
        FROM messages 
@@ -128,7 +127,7 @@ app.post('/api/posts', async (req: Request, res: Response) => {
     const db = await getDatabase();
     const user = await db.get('SELECT restriction_status FROM users WHERE user_id = ?', [userId]);
     if (!user) return res.status(404).json({ error: "Creator profile record not found." });
-    const result = await db.run(`INSERT INTO posts (user_id, content, media_url, is_admin_featured) VALUES (?, ?, ?, 0)`, [userId, content, mediaUrl || null]);
+    const result = await db.run(`INSERT INTO posts (user_id, content, media_url, is_admin_featured) VALUES (?, ?, 0)`, [userId, content, mediaUrl || null]);
     return res.status(201).json({ success: true, postId: result.lastID });
   } catch (error) {
     return res.status(500).json({ error: "Internal server error." });
@@ -153,7 +152,7 @@ io.on('connection', (socket: Socket) => {
     const db = await getDatabase();
     try {
       await db.run('INSERT OR IGNORE INTO conversations (conversation_id) VALUES (1)');
-      const result = await db.run(`INSERT INTO messages (conversation_id, sender_id, message_type, file_url, is_view_once) VALUES (1, ?, ?, ?, ?)`, [data.senderId, data.type, data.content, data.isViewOnce ? 1 : 0]);
+      const result = await db.run(`INSERT INTO messages (conversation_id, sender_id, message_type, file_url, is_view_once) VALUES (1, ?, ?)`, [data.senderId, data.type, data.content, data.isViewOnce ? 1 : 0]);
       if (recipientSocketId) {
         io.to(recipientSocketId).emit('receive_message', { ...data, senderId: data.senderId, dbId: result.lastID, status: 'delivered' });
       }
@@ -185,5 +184,5 @@ io.on('connection', (socket: Socket) => {
   });
 });
 
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 httpServer.listen(PORT, () => console.log(`🚀 Creator engine server responding live on port ${PORT}`));
