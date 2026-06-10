@@ -1,25 +1,20 @@
-# Exported from Render on 2026-06-10T00:35:26Z
+# Exported from Render on 2026-06-10T01:03:21Z
 version: "1"
-projects:
-- name: My project
-  environments:
-  - name: Production
-    services:
-    - type: web
-      name: 'creator app '
-      runtime: node
-      repo: https://github.com/spymethod254/CREATOR.HUB-
-      plan: free
-      envVars:
-      - key: PORT
-        sync: false
-      - key: NODE_ENV
-        sync: false
-      - key: JWT_SECRET
-        sync: false
-      - key: DATABASE_PATH
-        sync: false
-      region: virginia
-      buildCommand: npm install --omit=dev && npm run build:backend
-      startCommand: node npm start
-      autoDeployTrigger: commit
+services:
+- type: web
+  name: creator.hub
+  runtime: node
+  repo: https://github.com/spymethod254/CREATOR.HUB-
+  plan: free
+  envVars:
+  - key: NODE_ENV
+    sync: false
+  - key: JWT_SECRET
+    sync: false
+  - key: PORT
+    sync: false
+  region: virginia
+  buildCommand: npm install --omit=dev
+  startCommand: node npm start
+  autoDeployTrigger: commit
+
