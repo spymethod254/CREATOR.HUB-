@@ -17,4 +17,7 @@ services:
   buildCommand: npm install --omit=dev
   startCommand: node npm start
   autoDeployTrigger: commit
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
