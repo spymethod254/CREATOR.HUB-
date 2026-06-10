@@ -2,20 +2,16 @@
   "name": "creator",
   "version": "1.0.0",
   "description": "",
-  "main": "server.js",
+  "main": "server.ts",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
+    "start": "tsx server.ts",
     "dev": "vite",
     "dev:backend": "tsx watch server.ts",
     "build:frontend": "vite build",
     "preview": "vite preview",
-    "build:backend": "tsc server.ts --outDir . --module NodeNext --target ES2020",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "hamsogwiji",
-  "license": "ISC",
   "dependencies": {
     "@tailwindcss/vite": "^4.3.0",
     "bcrypt": "^6.0.0",
@@ -45,7 +41,6 @@
     "nodemon": "^3.1.14",
     "postcss": "^8.5.15",
     "tailwindcss": "^4.3.0",
-    "ts-node": "^10.9.2",
     "tsx": "^4.7.0",
     "typescript": "^5.9.3",
     "vite": "^8.0.16"
