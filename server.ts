@@ -127,7 +127,7 @@ app.post('/api/posts', async (req: Request, res: Response) => {
     const db = await getDatabase();
     const user = await db.get('SELECT restriction_status FROM users WHERE user_id = ?', [userId]);
     if (!user) return res.status(404).json({ error: "Creator profile record not found." });
-    const result = await db.run(`INSERT INTO posts (user_id, content, media_url, is_admin_featured) VALUES (?, ?, 0)`, [userId, content, mediaUrl || null]);
+    const result = await db.run(`INSERT INTO posts (user_id, content, media_url, is_admin_featured) VALUES (?, ?, ?)`, [userId, content, mediaUrl || null]);
     return res.status(201).json({ success: true, postId: result.lastID });
   } catch (error) {
     return res.status(500).json({ error: "Internal server error." });
@@ -184,5 +184,5 @@ io.on('connection', (socket: Socket) => {
   });
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 10000;
 httpServer.listen(PORT, () => console.log(`🚀 Creator engine server responding live on port ${PORT}`));
