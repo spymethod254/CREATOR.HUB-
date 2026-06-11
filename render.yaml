@@ -15,7 +15,7 @@ services:
     sync: false
   region: virginia
   buildCommand: npm install --omit=dev
-  startCommand: node npm start
+  startCommand: npm start
   autoDeployTrigger: commit
 <<<<<<< Updated upstream
 
