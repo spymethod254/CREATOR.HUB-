@@ -134,6 +134,14 @@ app.post('/api/posts', async (req: Request, res: Response) => {
   }
 });
 
+app.get('/', (req, res) => res.json({ status: 'alive', time: new Date() }));
+
+// Catch all errors so Render never returns empty response
+app.use((err: any, req: Request, res: Response, next: any) => {
+  console.error('Server error:', err);
+  res.status(500).json({ error: 'Server error', message: err.message });
+});
+
 const httpServer = createServer(app);
 const io = new Server(httpServer, { cors: { origin: "*", methods: ["GET", "POST"] } });
 app.set('io', io);
