@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, User, Phone } from 'lucide-react';
-
-const API_URL = import.meta.env.VITE_API_URL || process.env.REACT_APP_API_URL || '';
+import { supabase } from './supabaseClient'; // <-- 1. ADD THIS
 
 export default function RegisterLogin() {
   const navigate = useNavigate();
@@ -19,50 +18,62 @@ export default function RegisterLogin() {
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setFormData({...formData, [e.target.name]: e.target.value });
   };
 
-  const handleGoogleAuth = () => {
-    window.location.href = `${API_URL}/auth/google`;
+  const handleGoogleAuth = async () => {
+    // 2. GOOGLE LOGIN WITH SUPABASE
+    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' });
+    if (error) alert(error.message);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    const endpoint = `${API_URL}/api/auth/${isLogin ? 'login' : 'register'}`;
-
-    const submissionPayload = isLogin 
-      ? { email: formData.email, password: formData.password }
-      : formData;
 
     try {
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(submissionPayload)
-      });
+      if (isLogin) {
+        // 3. LOGIN
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.password,
+        });
+        if (error) throw error;
 
-      const data = await response.json();
+        // Save to localStorage
+        localStorage.setItem('userId', data.user.id);
+        localStorage.setItem('username', data.user.user_metadata.username || formData.email.split('@')[0]);
+        navigate('/');
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Authentication process failed.');
-      }
+      } else {
+        // 4. REGISTER + INSERT TO USERS TABLE
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+          options: {
+            data: { // this goes to auth.users.user_metadata
+              username: formData.username,
+              phone_number: formData.phone_number,
+              work_status: formData.work_status,
+              relationship_status: formData.relationship_status
+            }
+          }
+        });
+        if (authError) throw authError;
 
-      if (data.success && data.user) {
-        // Handle both user_id and userId from backend
-        const userId = data.user_id || data.userId || data.user_id || data.userId;
-        const username = data.user.username || '';
+        // Also insert into your public.users table
+        const { error: dbError } = await supabase.from('users').insert({
+          user_id: authData.user?.id,
+          username: formData.username,
+          email: formData.email,
+          phone_number: formData.phone_number,
+          work_status: formData.work_status,
+          relationship_status: formData.relationship_status
+        });
+        if (dbError) throw dbError;
 
-        if (userId) {
-          localStorage.setItem('userId', userId.toString());
-          localStorage.setItem('username', username);
-          navigate('/'); // Use navigate instead of window.location
-        } else {
-          alert("Authentication error: User ID missing from server.");
-        }
-      } else if (data.success && !isLogin) {
-        alert(data.message || 'Registration successful! Please login.');
-        setIsLogin(true); 
+        alert('Registration successful! Check your email to confirm.');
+        setIsLogin(true);
         setFormData({...formData, password: ''});
       }
     } catch (err: any) {
@@ -77,13 +88,13 @@ export default function RegisterLogin() {
       <div className="bg-slate-800 w-full max-w-md rounded-2xl border-slate-700 shadow-xl p-6 md:p-8">
 
         <div className="flex border-b border-slate-700 mb-6">
-          <button type="button" onClick={() => setIsLogin(true)} className={`flex-1 pb-3 text-sm font-bold border-b-2 transition ${isLogin ? 'border-indigo-500 text-white' : 'border-transparent text-slate-400 hover:text-slate-200'}`}>Sign In</button>
-          <button type="button" onClick={() => setIsLogin(false)} className={`flex-1 pb-3 text-sm font-bold border-b-2 transition ${!isLogin ? 'border-indigo-500 text-white' : 'border-transparent text-slate-400 hover:text-slate-200'}`}>Create Account</button>
+          <button type="button" onClick={() => setIsLogin(true)} className={`flex-1 pb-3 text-sm font-bold border-b-2 transition ${isLogin? 'border-indigo-500 text-white' : 'border-transparent text-slate-400 hover:text-slate-200'}`}>Sign In</button>
+          <button type="button" onClick={() => setIsLogin(false)} className={`flex-1 pb-3 text-sm font-bold border-b-2 transition ${!isLogin? 'border-indigo-500 text-white' : 'border-transparent text-slate-400 hover:text-slate-200'}`}>Create Account</button>
         </div>
 
         <div className="text-center mb-6">
           <h2 className="text-2xl font-black text-indigo-400 tracking-wide">CREATOR.HUB</h2>
-          <p className="text-xs text-slate-400 mt-1">{isLogin ? 'Welcome back! Log in to check updates.' : 'Join the community to collaborate.'}</p>
+          <p className="text-xs text-slate-400 mt-1">{isLogin? 'Welcome back! Log in to check updates.' : 'Join the community to collaborate.'}</p>
         </div>
 
         <button type="button" onClick={handleGoogleAuth} className="w-full flex items-center justify-center gap-3 bg-white hover:bg-slate-100 text-slate-900 font-semibold text-sm py-2.5 px-4 rounded-xl transition shadow-sm mb-4">
@@ -160,7 +171,7 @@ export default function RegisterLogin() {
           )}
 
           <button type="submit" disabled={isLoading} className="w-full bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 disabled:bg-slate-700 text-white font-bold text-sm py-2.5 rounded-xl transition shadow-md flex items-center justify-center gap-2 mt-2">
-            {isLoading ? 'Processing...' : isLogin ? 'Sign In to Account' : 'Register Account'}
+            {isLoading? 'Processing...' : isLogin? 'Sign In to Account' : 'Register Account'}
           </button>
         </form>
 
