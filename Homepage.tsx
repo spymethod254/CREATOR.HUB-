@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Home, Compass, Video, MessageSquare, ThumbsUp, MessageCircle, Share2, Award } from 'lucide-react';
+import { supabase } from './supabaseClient'; // <-- 1. ADD THIS
 
 interface Post {
   post_id: number;
@@ -34,22 +35,41 @@ export default function Homepage() {
 
   const fetchFeedPosts = async () => {
     try {
-      const res = await fetch('/api/posts');
-      const postsData = await res.json();
+      // 2. REPLACE fetch('/api/posts') WITH SUPABASE
+      const { data: postsData, error } = await supabase
+       .from('posts')
+       .select(`
+          post_id,
+          content,
+          media_url,
+          is_admin_featured,
+          created_at,
+          users ( username, profile_picture_url )
+        `)
+       .order('created_at', { ascending: false });
 
+      if (error) throw error;
+
+      // 3. GET LIKES + COMMENTS COUNT FOR EACH POST
       const enrichedPosts = await Promise.all(
-        postsData.map(async (post: Post) => {
-          try {
-            const engageRes = await fetch(`/api/posts/${post.post_id}/engagement`);
-            const engageData = await engageRes.json();
-            return {
-            ...post,
-              likes_count: engageData.likes || 0,
-              comments_count: engageData.comments?.length || 0
-            };
-          } catch {
-            return {...post, likes_count: 0, comments_count: 0 };
-          }
+        postsData.map(async (post: any) => {
+          const { count: likes } = await supabase
+           .from('post_reactions')
+           .select('*', { count: 'exact', head: true })
+           .eq('post_id', post.post_id);
+
+          const { count: comments } = await supabase
+           .from('post_comments')
+           .select('*', { count: 'exact', head: true })
+           .eq('post_id', post.post_id);
+
+          return {
+           ...post,
+            username: post.users?.username,
+            profile_picture_url: post.users?.profile_picture_url,
+            likes_count: likes || 0,
+            comments_count: comments || 0
+          };
         })
       );
 
@@ -64,20 +84,13 @@ export default function Homepage() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch('/api/posts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: currentUserId,
-          content: newPostContent
-        })
+      // 4. REPLACE fetch('/api/posts') WITH SUPABASE INSERT
+      const { error } = await supabase.from('posts').insert({
+        user_id: currentUserId,
+        content: newPostContent
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to publish post content.');
-      }
+      if (error) throw error;
 
       setNewPostContent('');
       fetchFeedPosts();
@@ -90,14 +103,20 @@ export default function Homepage() {
 
   const handleToggleLike = async (postId: number) => {
     try {
-      const response = await fetch('/api/posts/like', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ postId, userId: currentUserId })
+      // 5. REPLACE LIKE API WITH SUPABASE
+      const { error } = await supabase.from('post_reactions').insert({
+        post_id: postId,
+        user_id: currentUserId
       });
-      if (response.ok) {
-        fetchFeedPosts();
+
+      if (error && error.code === '23505') { // unique violation = already liked
+        await supabase.from('post_reactions')
+         .delete()
+         .eq('post_id', postId)
+         .eq('user_id', currentUserId);
       }
+
+      fetchFeedPosts();
     } catch (err) {
       console.error("Failed to execute like interaction toggle:", err);
     }
