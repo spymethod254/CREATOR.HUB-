@@ -25,7 +25,7 @@ export default function Homepage() {
 
   const currentUserId = localStorage.getItem('userId');
   const currentUsername = localStorage.getItem('username') || 'You';
-
+}
   useEffect(() => {
     if (!currentUserId) {
       navigate('/login');
