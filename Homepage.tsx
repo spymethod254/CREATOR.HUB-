@@ -5,7 +5,7 @@ import { supabase } from './supabaseClient';
 
 interface Post {
   post_id: number;
-  user_id: string; // <-- ADDED THIS
+  user_id: string;
   username: string;
   profile_picture_url: string;
   content: string;
@@ -185,7 +185,7 @@ export default function Homepage() {
                         {post.username? post.username.substring(0, 2).toUpperCase() : 'CC'}
                       </div>
                       <div>
-                        <h4 className="font-bold text-sm text-slate-100 hover:underline cursor-pointer" onClick={() => navigate(`/profile/${post.user_id}`)}>{post.username || 'Anonymous'}</h4> {/* FIXED: was post.post_id */}
+                        <h4 className="font-bold text-sm text-slate-100 hover:underline cursor-pointer" onClick={() => navigate(`/profile/${post.user_id}`)}>{post.username || 'Anonymous'}</h4>
                         <p className="text-xs text-slate-400">Creator Hub Member</p>
                       </div>
                     </div>
@@ -222,4 +222,4 @@ export default function Homepage() {
       </nav>
     </div>
   );
-} // <-- MAKE SURE THIS CLOSING BRACE IS HERE
+}
