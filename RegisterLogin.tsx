@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'; // <-- added useEffect
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, User, Phone } from 'lucide-react';
-import { supabase } from './supabaseClient'; // <-- 1. ADD THIS
+import { supabase } from './supabaseClient';
 
 export default function RegisterLogin() {
   const navigate = useNavigate();
@@ -17,13 +17,39 @@ export default function RegisterLogin() {
     relationship_status: 'Private'
   });
 
+  // ADD THIS BLOCK - handles Google redirect
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        localStorage.setItem('userId', session.user.id);
+        localStorage.setItem('username', session.user.user_metadata.username || session.user.email?.split('@')[0] || 'User');
+        navigate('/');
+      }
+    });
+
+    const { data: { subscription } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        localStorage.setItem('userId', session.user.id);
+        localStorage.setItem('username', session.user_metadata.username || session.user.email?.split('@')[0] || 'User');
+        navigate('/');
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({...formData, [e.target.name]: e.target.value });
   };
 
   const handleGoogleAuth = async () => {
-    // 2. GOOGLE LOGIN WITH SUPABASE
-    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' });
+    // UPDATED: added redirectTo
+    const { error } = await supabase.auth.signInWithOAuth({ 
+      provider: 'google',
+      options: {
+        redirectTo: 'https://hub-gray.vercel.app/'
+      }
+    });
     if (error) alert(error.message);
   };
 
@@ -33,25 +59,22 @@ export default function RegisterLogin() {
 
     try {
       if (isLogin) {
-        // 3. LOGIN
         const { data, error } = await supabase.auth.signInWithPassword({
           email: formData.email,
           password: formData.password,
         });
         if (error) throw error;
 
-        // Save to localStorage
         localStorage.setItem('userId', data.user.id);
         localStorage.setItem('username', data.user.user_metadata.username || formData.email.split('@')[0]);
         navigate('/');
 
       } else {
-        // 4. REGISTER + INSERT TO USERS TABLE
         const { data: authData, error: authError } = await supabase.auth.signUp({
           email: formData.email,
           password: formData.password,
           options: {
-            data: { // this goes to auth.users.user_metadata
+            data: {
               username: formData.username,
               phone_number: formData.phone_number,
               work_status: formData.work_status,
@@ -61,7 +84,6 @@ export default function RegisterLogin() {
         });
         if (authError) throw authError;
 
-        // Also insert into your public.users table
         const { error: dbError } = await supabase.from('users').insert({
           user_id: authData.user?.id,
           username: formData.username,
@@ -84,6 +106,7 @@ export default function RegisterLogin() {
   };
 
   return (
+    //... your return JSX stays exactly the same...
     <div className="min-h-screen bg-slate-900 text-slate-100 flex items-center justify-center p-4 font-sans">
       <div className="bg-slate-800 w-full max-w-md rounded-2xl border-slate-700 shadow-xl p-6 md:p-8">
 
