@@ -40,7 +40,7 @@ export default function Homepage() {
       .from('posts')
       .select(`
           post_id,
-          user_id, // <-- ADDED THIS
+          user_id,
           content,
           media_url,
           is_admin_featured,
@@ -185,7 +185,7 @@ export default function Homepage() {
                         {post.username? post.username.substring(0, 2).toUpperCase() : 'CC'}
                       </div>
                       <div>
-                        <h4 className="font-bold text-sm text-slate-100 hover:underline cursor-pointer" onClick={() => navigate(`/profile/${post.user_id}`)}>{post.username || 'Anonymous'}</h4> // <-- FIXED: was post.post_id
+                        <h4 className="font-bold text-sm text-slate-100 hover:underline cursor-pointer" onClick={() => navigate(`/profile/${post.user_id}`)}>{post.username || 'Anonymous'}</h4> {/* FIXED: was post.post_id */}
                         <p className="text-xs text-slate-400">Creator Hub Member</p>
                       </div>
                     </div>
