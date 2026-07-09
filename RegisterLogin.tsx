@@ -47,7 +47,7 @@ export default function RegisterLogin() {
     const { error } = await supabase.auth.signInWithOAuth({ 
       provider: 'google',
       options: {
-        redirectTo: 'https://hub-gray.vercel.app/'
+        redirectTo: window.location.origin + '/'
       }
     });
     if (error) alert(error.message);
