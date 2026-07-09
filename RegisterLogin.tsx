@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'; // <-- added useEffect
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, User, Phone } from 'lucide-react';
 import { supabase } from './supabaseClient';
@@ -17,17 +17,17 @@ export default function RegisterLogin() {
     relationship_status: 'Private'
   });
 
-  // ADD THIS BLOCK - handles Google redirect
+  // handles Google redirect + auth state
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         localStorage.setItem('userId', session.user.id);
-        localStorage.setItem('username', session.user.user_metadata.username || session.user.email?.split('@')[0] || 'User');
+        localStorage.setItem('username', session.user_metadata.username || session.user.email?.split('@')[0] || 'User');
         navigate('/');
       }
     });
 
-    const { data: { subscription } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => { // <-- FIXED HERE
       if (session) {
         localStorage.setItem('userId', session.user.id);
         localStorage.setItem('username', session.user_metadata.username || session.user.email?.split('@')[0] || 'User');
@@ -43,8 +43,7 @@ export default function RegisterLogin() {
   };
 
   const handleGoogleAuth = async () => {
-    // UPDATED: added redirectTo
-    const { error } = await supabase.auth.signInWithOAuth({ 
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: window.location.origin + '/'
@@ -106,7 +105,6 @@ export default function RegisterLogin() {
   };
 
   return (
-    //... your return JSX stays exactly the same...
     <div className="min-h-screen bg-slate-900 text-slate-100 flex items-center justify-center p-4 font-sans">
       <div className="bg-slate-800 w-full max-w-md rounded-2xl border-slate-700 shadow-xl p-6 md:p-8">
 
