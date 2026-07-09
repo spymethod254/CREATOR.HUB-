@@ -27,7 +27,7 @@ export default function RegisterLogin() {
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => { // <-- FIXED HERE
+    const { data: { subscription } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
         localStorage.setItem('userId', session.user.id);
         localStorage.setItem('username', session.user_metadata.username || session.user.email?.split('@')[0] || 'User');
