@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Home, Compass, Video, MessageSquare, ThumbsUp, MessageCircle, Share2, Award } from 'lucide-react';
-import { supabase } from './supabaseClient'; 
+import { Home, Compass, Video, MessageSquare, ThumbsUp, MessageCircle, Share2, Award, LogOut } from 'lucide-react';
+import { supabase } from './supabaseClient';
 
 interface Post {
   post_id: number;
+  user_id: string; // <-- ADDED THIS
   username: string;
   profile_picture_url: string;
   content: string;
@@ -31,40 +32,39 @@ export default function Homepage() {
       return;
     }
     fetchFeedPosts();
-  }, [currentUserId]);
+  }, [currentUserId, navigate]); // <-- added navigate to deps
 
   const fetchFeedPosts = async () => {
     try {
-      // 2. REPLACE fetch('/api/posts') WITH SUPABASE
       const { data: postsData, error } = await supabase
-       .from('posts')
-       .select(`
+      .from('posts')
+      .select(`
           post_id,
+          user_id, // <-- ADDED THIS
           content,
           media_url,
           is_admin_featured,
           created_at,
           users ( username, profile_picture_url )
         `)
-       .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      // 3. GET LIKES + COMMENTS COUNT FOR EACH POST
       const enrichedPosts = await Promise.all(
         postsData.map(async (post: any) => {
           const { count: likes } = await supabase
-           .from('post_reactions')
-           .select('*', { count: 'exact', head: true })
-           .eq('post_id', post.post_id);
+          .from('post_reactions')
+          .select('*', { count: 'exact', head: true })
+          .eq('post_id', post.post_id);
 
           const { count: comments } = await supabase
-           .from('post_comments')
-           .select('*', { count: 'exact', head: true })
-           .eq('post_id', post.post_id);
+          .from('post_comments')
+          .select('*', { count: 'exact', head: true })
+          .eq('post_id', post.post_id);
 
           return {
-           ...post,
+          ...post,
             username: post.users?.username,
             profile_picture_url: post.users?.profile_picture_url,
             likes_count: likes || 0,
@@ -84,7 +84,6 @@ export default function Homepage() {
     setIsSubmitting(true);
 
     try {
-      // 4. REPLACE fetch('/api/posts') WITH SUPABASE INSERT
       const { error } = await supabase.from('posts').insert({
         user_id: currentUserId,
         content: newPostContent
@@ -103,7 +102,6 @@ export default function Homepage() {
 
   const handleToggleLike = async (postId: number) => {
     try {
-      // 5. REPLACE LIKE API WITH SUPABASE
       const { error } = await supabase.from('post_reactions').insert({
         post_id: postId,
         user_id: currentUserId
@@ -111,9 +109,9 @@ export default function Homepage() {
 
       if (error && error.code === '23505') { // unique violation = already liked
         await supabase.from('post_reactions')
-         .delete()
-         .eq('post_id', postId)
-         .eq('user_id', currentUserId);
+        .delete()
+        .eq('post_id', postId)
+        .eq('user_id', currentUserId);
       }
 
       fetchFeedPosts();
@@ -145,7 +143,7 @@ export default function Homepage() {
         <button type="button" onClick={() => {navigate('/'); setMobileMenuOpen(false)}} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-medium transition w-full text-left"><Home size={18}/> Feed Home</button>
         <button type="button" onClick={() => {navigate('/profile'); setMobileMenuOpen(false)}} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-slate-200 text-sm font-medium transition w-full text-left"><Compass size={18}/> My Profile</button>
         <button type="button" onClick={() => {navigate('/chat'); setMobileMenuOpen(false)}} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-slate-200 text-sm font-medium transition w-full text-left"><MessageSquare size={18}/> Chat Rooms</button>
-        <button type="button" onClick={() => { localStorage.clear(); navigate('/login'); }} className="mt-auto flex items-center gap-3 px-3 py-2.5 rounded-xl text-rose-400 hover:bg-rose-950/20 text-sm font-medium transition w-full text-left">Sign Out Account</button>
+        <button type="button" onClick={() => { localStorage.clear(); navigate('/login'); }} className="mt-auto flex items-center gap-3 px-3 py-2.5 rounded-xl text-rose-400 hover:bg-rose-950/20 text-sm font-medium transition w-full text-left"><LogOut size={18}/>Sign Out Account</button>
       </aside>
 
       <div className="flex-1 max-w-6xl w-full mx-auto flex-col pb-20 md:pb-0">
@@ -187,7 +185,7 @@ export default function Homepage() {
                         {post.username? post.username.substring(0, 2).toUpperCase() : 'CC'}
                       </div>
                       <div>
-                        <h4 className="font-bold text-sm text-slate-100 hover:underline cursor-pointer" onClick={() => navigate(`/profile/${post.post_id}`)}>{post.username || 'Anonymous'}</h4>
+                        <h4 className="font-bold text-sm text-slate-100 hover:underline cursor-pointer" onClick={() => navigate(`/profile/${post.user_id}`)}>{post.username || 'Anonymous'}</h4> // <-- FIXED: was post.post_id
                         <p className="text-xs text-slate-400">Creator Hub Member</p>
                       </div>
                     </div>
@@ -224,4 +222,4 @@ export default function Homepage() {
       </nav>
     </div>
   );
-}
+} // <-- MAKE SURE THIS CLOSING BRACE IS HERE
