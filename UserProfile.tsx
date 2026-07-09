@@ -4,6 +4,7 @@ import {
   ArrowLeft, ShieldCheck, Mail, Phone, 
   Briefcase, Heart, ThumbsUp, MessageCircle, X, Camera
 } from 'lucide-react';
+import { supabase } from './supabaseClient'; // <-- 1. ADD THIS
 
 export default function UserProfile() {
   const navigate = useNavigate();
@@ -26,7 +27,6 @@ export default function UserProfile() {
   const [userPosts, setUserPosts] = useState<any[]>([]);
 
   useEffect(() => {
-    // Guard: redirect to login if no userId
     if (!currentUserId) {
       navigate('/login');
       return;
@@ -41,30 +41,46 @@ export default function UserProfile() {
   const fetchProfileData = async () => {
     try {
       setLoading(true);
-      const userRes = await fetch(`/api/users/${targetProfileId}`);
-      const userData = await userRes.json();
+      
+      // 2. GET USER PROFILE FROM SUPABASE
+      const { data: profile, error: profileError } = await supabase
+       .from('users')
+       .select('*')
+       .eq('user_id', targetProfileId)
+       .single();
 
-      if (!userRes.ok || !userData.profile) {
-        throw new Error(userData.error || "Profile object missing from server response.");
+      if (profileError) throw profileError;
+
+      // 3. GET FOLLOW STATS
+      const { count: followers } = await supabase
+       .from('follows')
+       .select('*', { count: 'exact', head: true })
+       .eq('following_id', targetProfileId);
+
+      const { count: following } = await supabase
+       .from('follows')
+       .select('*', { count: 'exact', head: true })
+       .eq('follower_id', targetProfileId);
+
+      // 4. CHECK IF CURRENT USER FOLLOWS
+      if (currentUserId!== targetProfileId) {
+        const { data: followCheck } = await supabase
+         .from('follows')
+         .select('id')
+         .eq('follower_id', currentUserId)
+         .eq('following_id', targetProfileId)
+         .single();
+        setIsFollowing(!!followCheck);
       }
 
-      const profile = userData.profile;
+      // 5. GET USER POSTS
+      const { data: posts } = await supabase
+       .from('posts')
+       .select('*')
+       .eq('user_id', targetProfileId)
+       .order('created_at', { ascending: false });
 
-      const statsRes = await fetch(`/api/creators/${targetProfileId}/follow-stats`);
-      const statsData = await statsRes.json();
-
-      if (currentUserId !== targetProfileId) {
-        const checkFollow = await fetch(`/api/creators/is-following/${currentUserId}/${targetProfileId}`);
-        const followData = await checkFollow.json();
-        setIsFollowing(followData.following);
-      }
-
-      const postsRes = await fetch(`/api/posts`);
-      if (postsRes.ok) {
-        const allPosts = await postsRes.json();
-        const filteredPosts = allPosts.filter((p: any) => p.user_id.toString() === targetProfileId.toString());
-        setUserPosts(filteredPosts);
-      }
+      setUserPosts(posts || []);
 
       setCreator({
         user_id: profile.user_id,
@@ -74,8 +90,8 @@ export default function UserProfile() {
         profile_picture_url: profile.profile_picture_url || null,
         work_status: profile.work_status || 'Available',
         relationship_status: profile.relationship_status || 'Private',
-        totalFollowers: statsData.totalFollowers || 0,
-        totalFollowing: statsData.totalFollowing || 0
+        totalFollowers: followers || 0,
+        totalFollowing: following || 0
       });
 
       setEditWorkStatus(profile.work_status || 'Available');
@@ -91,15 +107,15 @@ export default function UserProfile() {
   const handleSaveChanges = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch(`/api/users/${targetProfileId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const { error } = await supabase
+       .from('users')
+       .update({
           work_status: editWorkStatus,
           relationship_status: editRelationship
         })
-      });
-      if (!response.ok) throw new Error("Failed to save changes");
+       .eq('user_id', targetProfileId);
+      
+      if (error) throw error;
       setIsSettingsOpen(false);
       await fetchProfileData();
     } catch (err) {
@@ -111,51 +127,57 @@ export default function UserProfile() {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploadingAvatar(true);
-    const formData = new FormData();
-    formData.append('file', file);
 
     try {
-      const uploadRes = await fetch('/api/chat/upload', {
-        method: 'POST',
-        body: formData
-      });
-      const uploadData = await uploadRes.json();
-      if (!uploadRes.ok) throw new Error(uploadData.error);
+      // 6. UPLOAD TO SUPABASE STORAGE
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${targetProfileId}/avatar.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+       .from('avatars')
+       .upload(fileName, file, { upsert: true });
+      
+      if (uploadError) throw uploadError;
 
-      const updateRes = await fetch(`/api/users/${targetProfileId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          work_status: editWorkStatus,
-          relationship_status: editRelationship,
-          profile_picture_url: uploadData.fileUrl
-        })
-      });
-      if (updateRes.ok) await fetchProfileData();
+      const { data: { publicUrl } = supabase.storage
+       .from('avatars')
+       .getPublicUrl(fileName);
+
+      // 7. UPDATE USER TABLE WITH NEW URL
+      const { error: updateError } = await supabase
+       .from('users')
+       .update({ profile_picture_url: publicUrl })
+       .eq('user_id', targetProfileId);
+      
+      if (updateError) throw updateError;
+      await fetchProfileData();
     } catch (err) {
       alert("Failed to upload profile picture.");
+      console.error(err)
     } finally {
       setUploadingAvatar(false);
     }
   };
 
   const handleFollowActionToggle = async () => {
-    if (!creator || !currentUserId) return;
+    if (!creator ||!currentUserId) return;
     try {
-      const response = await fetch('/api/creators/follow', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ followerId: Number(currentUserId), followingId: creator.user_id })
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setIsFollowing(data.following);
-        setCreator((prev: any) => {
-          if (!prev) return null;
-          const currentCount = prev.totalFollowers || 0;
-          const updatedCount = data.following ? currentCount + 1 : Math.max(0, currentCount - 1);
-          return { ...prev, totalFollowers: updatedCount };
-        });
+      if (isFollowing) {
+        // UNFOLLOW
+        await supabase
+         .from('follows')
+         .delete()
+         .eq('follower_id', currentUserId)
+         .eq('following_id', creator.user_id);
+        setIsFollowing(false);
+        setCreator((prev: any) => ({...prev, totalFollowers: prev.totalFollowers - 1 }));
+      } else {
+        // FOLLOW
+        await supabase
+         .from('follows')
+         .insert({ follower_id: currentUserId, following_id: creator.user_id });
+        setIsFollowing(true);
+        setCreator((prev: any) => ({...prev, totalFollowers: prev.totalFollowers + 1 }));
       }
     } catch (err) {
       console.error('Failed to execute account follow matrix toggle:', err);
@@ -166,10 +188,10 @@ export default function UserProfile() {
   if (!creator) return <div className="min-h-screen bg-slate-900 text-rose-400 flex items-center justify-center font-bold">Profile record missing.</div>;
 
   const isProfileOwner = currentUserId?.toString() === creator.user_id.toString();
-  const followButtonClass = isFollowing ? 'text-xs font-bold px-4 py-2 rounded-xl transition shadow-sm bg-slate-700 text-slate-300' : 'text-xs font-bold px-4 py-2 rounded-xl transition shadow-sm bg-indigo-500 text-white hover:bg-indigo-600';
-  const feedTabClass = activeTab === 'posts' ? 'pb-3 px-4 border-b-2 transition border-indigo-500 text-indigo-400' : 'pb-3 px-4 border-b-2 transition border-transparent text-slate-400 hover:text-slate-200';
-  const aboutTabClass = activeTab === 'about' ? 'pb-3 px-4 border-b-2 transition border-indigo-500 text-indigo-400' : 'pb-3 px-4 border-b-2 transition border-transparent text-slate-400 hover:text-slate-200';
-  const firstLetter = creator.username ? creator.username.charAt(0).toUpperCase() : 'C';
+  const followButtonClass = isFollowing? 'text-xs font-bold px-4 py-2 rounded-xl transition shadow-sm bg-slate-700 text-slate-300' : 'text-xs font-bold px-4 py-2 rounded-xl transition shadow-sm bg-indigo-500 text-white hover:bg-indigo-600';
+  const feedTabClass = activeTab === 'posts'? 'pb-3 px-4 border-b-2 transition border-indigo-500 text-indigo-400' : 'pb-3 px-4 border-b-2 transition border-transparent text-slate-400 hover:text-slate-200';
+  const aboutTabClass = activeTab === 'about'? 'pb-3 px-4 border-b-2 transition border-indigo-500 text-indigo-400' : 'pb-3 px-4 border-b-2 transition border-transparent text-slate-400 hover:text-slate-200';
+  const firstLetter = creator.username? creator.username.charAt(0).toUpperCase() : 'C';
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 font-sans pb-20 md:pb-12 relative">
@@ -183,14 +205,14 @@ export default function UserProfile() {
         <div className="flex flex-col sm:flex-row items-center gap-5 bg-slate-800 p-6 rounded-2xl border-slate-700/80 shadow-md">
 
           <div className="relative shadow-lg group">
-            {creator.profile_picture_url ? (
+            {creator.profile_picture_url? (
               <img src={creator.profile_picture_url} alt="Profile" className="w-24 h-24 rounded-full object-cover border-4 border-indigo-500 shadow-inner" />
             ) : (
               <div className="w-24 h-24 rounded-full border-4 border-indigo-500 bg-indigo-600 flex items-center justify-center text-white font-black text-3xl select-none">{firstLetter}</div>
             )}
             {isProfileOwner && (
               <button type="button" onClick={() => fileInputRef.current?.click()} className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-200 text-white cursor-pointer" title="Change Avatar Image">
-                <Camera size={20} className={uploadingAvatar ? 'animate-spin' : ''} />
+                <Camera size={20} className={uploadingAvatar? 'animate-spin' : ''} />
               </button>
             )}
             <span className="absolute bottom-1 right-1 w-3.5 h-3.5 bg-green-500 border-2 border-slate-800 rounded-full"></span>
@@ -203,8 +225,8 @@ export default function UserProfile() {
               <div><span className="font-bold text-indigo-400">{creator.totalFollowing}</span> Following</div>
             </div>
             <div className="mt-3 flex gap-2 justify-center sm:justify-start">
-              {!isProfileOwner && <button type="button" onClick={handleFollowActionToggle} className={followButtonClass}>{isFollowing ? '✓ Following' : 'Follow'}</button>}
-              <button type="button" onClick={() => { if (isProfileOwner) { setIsSettingsOpen(true); } else { navigate('/chat'); } }} className="bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-bold px-4 py-2 rounded-xl transition shadow-sm">{isProfileOwner ? 'Manage Settings' : 'Message'}</button>
+              {!isProfileOwner && <button type="button" onClick={handleFollowActionToggle} className={followButtonClass}>{isFollowing? '✓ Following' : 'Follow'}</button>}
+              <button type="button" onClick={() => { if (isProfileOwner) { setIsSettingsOpen(true); } else { navigate('/chat'); } }} className="bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-bold px-4 py-2 rounded-xl transition shadow-sm">{isProfileOwner? 'Manage Settings' : 'Message'}</button>
             </div>
           </div>
         </div>
@@ -217,7 +239,7 @@ export default function UserProfile() {
         <div className="mt-5">
           {activeTab === 'posts' && (
             <div className="space-y-4">
-              {userPosts.length === 0 ? (
+              {userPosts.length === 0? (
                 <div className="text-center py-16 text-sm text-slate-500">No feed updates published yet by this creator.</div>
               ) : (
                 userPosts.map((post: any) => (
@@ -271,7 +293,7 @@ export default function UserProfile() {
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Relationship Status</label>
-                <select value={editRelationship} onChange={(e) => setEditRelationship(e.target.value)} className="w-full bg-slate-700 border-slate-600 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <select value={editRelationship} onChange={(e) => setEditRelationship(e.target.value)} className="w-full bg-slate-700 border-slate-600 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                   <option value="Private">Private</option>
                   <option value="Public">Public</option>
                 </select>
