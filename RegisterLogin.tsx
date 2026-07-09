@@ -22,15 +22,15 @@ export default function RegisterLogin() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         localStorage.setItem('userId', session.user.id);
-        localStorage.setItem('username', session.user_metadata.username || session.user.email?.split('@')[0] || 'User');
+        localStorage.setItem('username', session.user.user_metadata.username || session.user.email?.split('@')[0] || 'User');
         navigate('/');
       }
     });
 
-    const { data: { subscription } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => { // <-- FIXED: added }
       if (session) {
         localStorage.setItem('userId', session.user.id);
-        localStorage.setItem('username', session.user_metadata.username || session.user.email?.split('@')[0] || 'User');
+        localStorage.setItem('username', session.user.user_metadata.username || session.user.email?.split('@')[0] || 'User');
         navigate('/');
       }
     });
@@ -106,7 +106,7 @@ export default function RegisterLogin() {
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex items-center justify-center p-4 font-sans">
-      <div className="bg-slate-800 w-full max-w-md rounded-2xl border-slate-700 shadow-xl p-6 md:p-8">
+      <div className="bg-slate-800 w-full max-w-md rounded-2xl border border-slate-700 shadow-xl p-6 md:p-8">
 
         <div className="flex border-b border-slate-700 mb-6">
           <button type="button" onClick={() => setIsLogin(true)} className={`flex-1 pb-3 text-sm font-bold border-b-2 transition ${isLogin? 'border-indigo-500 text-white' : 'border-transparent text-slate-400 hover:text-slate-200'}`}>Sign In</button>
