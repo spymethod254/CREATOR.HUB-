@@ -1,20 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Home, Compass, Video, MessageSquare, ThumbsUp, MessageCircle, Share2, Award } from 'lucide-react';
-import { supabase } from './supabaseClient'; // <-- 1. ADD THIS
-
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-
-export default function Homepage() {
-  const navigate = useNavigate();
-  
-  useEffect(() => {
-    const userId = localStorage.getItem('userId');
-    if (!userId) navigate('/login');
-  }, [navigate]);
-  
-  //... rest of your code
+import { supabase } from './supabaseClient'; 
 
 interface Post {
   post_id: number;
