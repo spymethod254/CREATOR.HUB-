@@ -139,9 +139,10 @@ export default function UserProfile() {
       
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } = supabase.storage
-       .from('avatars')
+      const { data } = supabase.storage
+       .from("avatars")
        .getPublicUrl(fileName);
+      const publicUrl = data.publicUrl;
 
       // 7. UPDATE USER TABLE WITH NEW URL
       const { error: updateError } = await supabase
