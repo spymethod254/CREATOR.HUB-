@@ -47,7 +47,7 @@ export default function UserProfile() {
        .from('users')
        .select('*')
        .eq('user_id', targetProfileId)
-       .single();
+       .maybeSingle();
 
       if (profileError) throw profileError;
 
@@ -69,7 +69,7 @@ export default function UserProfile() {
          .select('id')
          .eq('follower_id', currentUserId)
          .eq('following_id', targetProfileId)
-         .single();
+         .maybeSingle();
         setIsFollowing(!!followCheck);
       }
 
