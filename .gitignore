@@ -1,0 +1,4 @@
+node_modules/
+.env
+creator_platform.db
+uploads/

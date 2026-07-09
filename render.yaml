@@ -1,0 +1,23 @@
+# Exported from Render on 2026-06-10T01:03:21Z
+version: "1"
+services:
+- type: web
+  name: creator.hub
+  runtime: node
+  repo: https://github.com/spymethod254/CREATOR.HUB-
+  plan: free
+  envVars:
+  - key: NODE_ENV
+    sync: false
+  - key: JWT_SECRET
+    sync: false
+  - key: PORT
+    sync: false
+  region: virginia
+  buildCommand: npm install --omit=dev
+  startCommand: npm start
+  autoDeployTrigger: commit
+<<<<<<< Updated upstream
+
+=======
+>>>>>>> Stashed changes
