@@ -25,14 +25,22 @@ export default function Homepage() {
 
   const currentUserId = localStorage.getItem('userId');
   const currentUsername = localStorage.getItem('username') || 'You';
+<<<<<<< HEAD
 
+=======
+}
+>>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
   useEffect(() => {
     if (!currentUserId) {
       navigate('/login');
       return;
     }
     fetchFeedPosts();
+<<<<<<< HEAD
   }, [currentUserId, navigate]);
+=======
+  }, [currentUserId, navigate]); // <-- added navigate to deps
+>>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
 
   const fetchFeedPosts = async () => {
     try {
@@ -52,7 +60,11 @@ export default function Homepage() {
       if (error) throw error;
 
       const enrichedPosts = await Promise.all(
+<<<<<<< HEAD
         (postsData || []).map(async (post: any) => {
+=======
+        postsData.map(async (post: any) => {
+>>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
           const { count: likes } = await supabase
           .from('post_reactions')
           .select('*', { count: 'exact', head: true })
@@ -222,4 +234,8 @@ export default function Homepage() {
       </nav>
     </div>
   );
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4

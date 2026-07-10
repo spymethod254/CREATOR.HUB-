@@ -4,11 +4,19 @@ import { Server, Socket } from 'socket.io';
 import cors from 'cors';
 import multer from 'multer';
 import path from 'path';
+<<<<<<< HEAD
 import fs from 'fs';
 import { createClient } from '@supabase/supabase-js';
 
 import { registerUser, loginUser } from './authController';
 import { updateUserRestriction, getFlaggedAccounts } from './moderationController';
+=======
+
+import { registerUser, loginUser } from './authController';
+import { updateUserRestriction, getFlaggedAccounts } from './moderationController';
+import { getDatabase } from './db';
+
+>>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
 import {
   likePost,
   commentPost,
@@ -17,6 +25,7 @@ import {
 
 const app = express();
 
+<<<<<<< HEAD
 // SUPABASE CLIENT
 const supabaseUrl = process.env.SUPABASE_URL!;
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY!; // use service key on backend
@@ -28,6 +37,9 @@ if (!fs.existsSync('uploads')) {
 }
 
 app.use(cors({ origin: '*', methods: ['GET', 'POST', 'PUT'] }));
+=======
+app.use(cors({ origin: '*', methods: ['GET', 'POST'] }));
+>>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
@@ -37,6 +49,10 @@ const storage = multer.diskStorage({
   filename: (req, file, cb) =>
     cb(null, Date.now() + path.extname(file.originalname))
 });
+<<<<<<< HEAD
+=======
+
+>>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
 const upload = multer({ storage });
 
 // AUTH
@@ -45,15 +61,22 @@ app.post('/api/auth/login', loginUser);
 
 // USERS
 app.get('/api/users', async (req, res) => {
+<<<<<<< HEAD
   const { data, error } = await supabase
     .from('users')
     .select('user_id, username, is_online, work_status');
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
+=======
+  const db = await getDatabase();
+  const users = await db.all('SELECT user_id, username, is_online, work_status FROM users');
+  res.json(users);
+>>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
 });
 
 // PROFILE
 app.get('/api/users/:id', async (req, res) => {
+<<<<<<< HEAD
   const { data, error } = await supabase
     .from('users')
     .select('*')
@@ -70,11 +93,28 @@ app.put('/api/users/:id', async (req, res) => {
     .update({ work_status, relationship_status })
     .eq('user_id', req.params.id);
   if (error) return res.status(500).json({ error: error.message });
+=======
+  const db = await getDatabase();
+  const user = await db.get('SELECT * FROM users WHERE user_id = ?', [req.params.id]);
+  res.json(user);
+});
+
+app.put('/api/users/:id', async (req, res) => {
+  const db = await getDatabase();
+  const { work_status, relationship_status } = req.body;
+
+  await db.run(
+    'UPDATE users SET work_status=?, relationship_status=? WHERE user_id=?',
+    [work_status, relationship_status, req.params.id]
+  );
+
+>>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
   res.json({ success: true });
 });
 
 // POSTS
 app.get('/api/posts', async (req, res) => {
+<<<<<<< HEAD
   const { data, error } = await supabase
     .from('posts')
     .select(`*, users(username)`)
@@ -85,10 +125,28 @@ app.get('/api/posts', async (req, res) => {
 
 app.post('/api/posts', async (req, res) => {
   const { userId, content, mediaUrl } = req.body;
+=======
+  const db = await getDatabase();
+  const posts = await db.all(
+    `SELECT p.*, u.username
+     FROM posts p
+     JOIN users u ON p.user_id = u.user_id
+     ORDER BY p.post_id DESC`
+  );
+
+  res.json(posts);
+});
+
+app.post('/api/posts', async (req, res) => {
+  const db = await getDatabase();
+  const { userId, content, mediaUrl } = req.body;
+
+>>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
   if (!userId || !content) {
     return res.status(400).json({ error: "Missing data" });
   }
 
+<<<<<<< HEAD
   const { data, error } = await supabase
     .from('posts')
     .insert([{ 
@@ -102,6 +160,15 @@ app.post('/api/posts', async (req, res) => {
 
   if (error) return res.status(500).json({ error: error.message });
   res.json({ success: true, postId: data.post_id });
+=======
+  const result = await db.run(
+    `INSERT INTO posts (user_id, content, media_url, is_admin_featured)
+     VALUES (?, ?, ?, ?)`,
+    [userId, content, mediaUrl || null, 0]
+  );
+
+  res.json({ success: true, postId: result.lastID });
+>>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
 });
 
 // POST INTERACTIONS
@@ -109,6 +176,7 @@ app.post('/api/posts/:postId/like', likePost);
 app.post('/api/posts/:postId/comment', commentPost);
 app.get('/api/posts/:postId/comments', getComments);
 
+<<<<<<< HEAD
 // CHAT - UPLOAD
 app.post('/api/chat/upload', upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file' });
@@ -128,6 +196,8 @@ app.get('/api/chat/messages/:userId1/:userId2', async (req, res) => {
   res.json(data);
 });
 
+=======
+>>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
 // ADMIN
 app.post('/api/admin/restrict', updateUserRestriction);
 app.get('/api/admin/flagged', getFlaggedAccounts);
@@ -142,6 +212,7 @@ const httpServer = createServer(app);
 const io = new Server(httpServer, { cors: { origin: '*' } });
 
 app.set('io', io);
+<<<<<<< HEAD
 const onlineUsers = new Map<string, string>();
 
 io.on('connection', (socket: Socket) => {
@@ -191,14 +262,30 @@ io.on('connection', (socket: Socket) => {
   });
 
   // disconnect
+=======
+
+const onlineUsers = new Map<string, string>();
+
+io.on('connection', (socket: Socket) => {
+
+>>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
   socket.on('disconnect', async () => {
     for (const [userId, socketId] of onlineUsers.entries()) {
       if (socketId === socket.id) {
         onlineUsers.delete(userId);
+<<<<<<< HEAD
         await supabase.from('users').update({ is_online: 0 }).eq('user_id', userId);
       }
     }
   });
+=======
+        const db = await getDatabase();
+        await db.run('UPDATE users SET is_online=0 WHERE user_id=?', [userId]);
+      }
+    }
+  });
+
+>>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
 });
 
 const PORT = process.env.PORT || 10000;

@@ -7,7 +7,11 @@ import {
 } from 'lucide-react';
 
 interface User {
+<<<<<<< HEAD
   user_id: string; // Supabase uses UUID strings
+=======
+  user_id: number;
+>>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
   username: string;
   is_online: number;
   work_status: string;
@@ -18,11 +22,15 @@ interface Message {
   messageId?: string;
   dbId?: number;
   senderId: string;
+<<<<<<< HEAD
   recipientId?: string;
+=======
+>>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
   content: string;
   type?: 'text' | 'image' | 'video' | 'audio';
   timestamp?: string;
   isViewOnce?: boolean;
+<<<<<<< HEAD
   message_text?: string;
   media_url?: string;
   message_type?: string;
@@ -34,6 +42,13 @@ const API_URL = import.meta.env.VITE_API_URL || ''; // set this in.env for prod
 export default function ChatWindow() {
   const navigate = useNavigate();
   const currentUserId = localStorage.getItem('userId') || '';
+=======
+}
+
+export default function ChatWindow() {
+  const navigate = useNavigate();
+  const currentUserId = localStorage.getItem('userId') || '1';
+>>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
 
   const [users, setUsers] = useState<User[]>([]);
   const [activeRecipient, setActiveRecipient] = useState<User | null>(null);
@@ -56,15 +71,26 @@ export default function ChatWindow() {
   const videoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+<<<<<<< HEAD
     socketRef.current = io(API_URL, { transports: ['websocket'] });
+=======
+    socketRef.current = io('/');
+>>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
     socketRef.current.emit('user_online', currentUserId);
 
     const fetchDirectory = async () => {
       try {
+<<<<<<< HEAD
         const res = await fetch(`${API_URL}/api/users`);
         if (res.ok) {
           const list = await res.json();
           const filtered = list.filter((u: User) => u.user_id!== currentUserId);
+=======
+        const res = await fetch('/api/users');
+        if (res.ok) {
+          const list = await res.json();
+          const filtered = list.filter((u: User) => u.user_id.toString()!== currentUserId.toString());
+>>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
 
           const enrichedList = filtered.map((u: User, index: number) => ({
            ...u,
@@ -81,9 +107,13 @@ export default function ChatWindow() {
     fetchDirectory();
 
     socketRef.current.on('receive_message', (incomingMsg: Message) => {
+<<<<<<< HEAD
       if (incomingMsg.senderId === activeRecipient?.user_id || incomingMsg.recipientId === activeRecipient?.user_id) {
         setMessages((prev) => [...prev, incomingMsg]);
       }
+=======
+      setMessages((prev) => [...prev, incomingMsg]);
+>>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
     });
 
     socketRef.current.on('destroy_view_once_media', (data: { messageId: string }) => {
@@ -99,6 +129,7 @@ export default function ChatWindow() {
     if (!activeRecipient) return;
     const loadChatLogs = async () => {
       try {
+<<<<<<< HEAD
         const res = await fetch(`${API_URL}/api/chat/messages/${currentUserId}/${activeRecipient.user_id}`);
         if (res.ok) {
           const history = await res.json();
@@ -112,6 +143,12 @@ export default function ChatWindow() {
             timestamp: h.created_at
           }));
           setMessages(formatted);
+=======
+        const res = await fetch(`/api/chat/messages/${currentUserId}/${activeRecipient.user_id}`);
+        if (res.ok) {
+          const history = await res.json();
+          setMessages(history);
+>>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
         }
       } catch (err) {
         console.error("Chat logs load failed", err);
@@ -129,11 +166,18 @@ export default function ChatWindow() {
     const bodyContent = customVal || typedMessage;
     if (!bodyContent.trim()) return;
 
+<<<<<<< HEAD
     const uniqueMsgId = crypto.randomUUID();
     const messagePayload: Message = {
       messageId: uniqueMsgId,
       senderId: currentUserId,
       recipientId: activeRecipient.user_id,
+=======
+    const uniqueMsgId = Math.random().toString(36).substring(7);
+    const messagePayload: Message = {
+      messageId: uniqueMsgId,
+      senderId: currentUserId,
+>>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
       content: bodyContent,
       type: msgType,
       isViewOnce: viewOnceToggle
@@ -142,14 +186,22 @@ export default function ChatWindow() {
     socketRef.current.emit('send_message', {
       messageId: uniqueMsgId,
       senderId: currentUserId,
+<<<<<<< HEAD
       recipientId: activeRecipient.user_id,
+=======
+      recipientId: activeRecipient.user_id.toString(),
+>>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
       type: msgType,
       content: bodyContent,
       isViewOnce: viewOnceToggle
     });
 
     setUsers(prev => prev.map(u => u.user_id === activeRecipient.user_id? {
+<<<<<<< HEAD
      ...u, lastMessageSnippet: msgType === 'audio'? "🎙️ Sent an audio track note" : msgType === 'image'? "📸 Image Asset" : bodyContent.substring(0, 30)
+=======
+     ...u, lastMessageSnippet: msgType === 'audio'? "🎙️ Sent an audio track note" : msgType === 'image'? "📸 Image Asset" : bodyContent
+>>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
     } : u));
 
     setMessages((prev) => [...prev, messagePayload]);
@@ -165,14 +217,22 @@ export default function ChatWindow() {
     formData.append('file', file);
 
     try {
+<<<<<<< HEAD
       const res = await fetch(`${API_URL}/api/chat/upload`, {
+=======
+      const res = await fetch('/api/chat/upload', {
+>>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
         method: 'POST',
         body: formData
       });
       const data = await res.json();
       if (data.success) {
+<<<<<<< HEAD
         const fileUrl = `${API_URL}${data.fileUrl}`;
         handleSendMessage(targetType, fileUrl);
+=======
+        handleSendMessage(targetType, data.fileUrl);
+>>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
       }
     } catch {
       alert("Failed to securely transport file.");
@@ -191,7 +251,11 @@ export default function ChatWindow() {
       };
 
       mediaRecorder.onstop = () => {
+<<<<<<< HEAD
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+=======
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+>>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
         const audioUrl = URL.createObjectURL(audioBlob);
         handleSendMessage('audio', audioUrl);
         stream.getTracks().forEach(track => track.stop());
@@ -215,7 +279,11 @@ export default function ChatWindow() {
     if (!socketRef.current ||!activeRecipient) return;
     socketRef.current.emit('message_read', {
       messageId: messageId || '',
+<<<<<<< HEAD
       senderId: activeRecipient.user_id,
+=======
+      senderId: activeRecipient.user_id.toString(),
+>>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
       recipientId: currentUserId,
       isViewOnce: true,
       dbId: dbId
@@ -237,14 +305,22 @@ export default function ChatWindow() {
         <div className="p-4 border-b border-slate-700 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
+<<<<<<< HEAD
               <button onClick={() => setMobileSidebarOpen(false)} className="md:hidden text-slate-400 hover:text-white"><ArrowLeft size={18} /></button>
+=======
+              <button onClick={() => setMobileSidebarOpen(false)} className="md:hidden text-slate-400 hover:text-white"><ArrowLeft size={18}/></button>
+>>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
               <MessageCircle size={20} className="text-indigo-400" />
               <h3 className="font-black text-base tracking-wide">Messages</h3>
             </div>
             <span className="text-[10px] bg-indigo-500/20 text-indigo-300 font-bold px-2 py-0.5 rounded-full border-indigo-500/30">{users.length} Chats</span>
           </div>
           <div className="relative">
+<<<<<<< HEAD
             <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500"><Search size={14} /></span>
+=======
+            <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500"><Search size={14}/></span>
+>>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
             <input
               type="text"
               value={searchQuery}
@@ -263,7 +339,11 @@ export default function ChatWindow() {
               <button
                 key={u.user_id}
                 type="button"
+<<<<<<< HEAD
                 onClick={() => { setActiveRecipient(u); setMobileSidebarOpen(false) }}
+=======
+                onClick={() => {setActiveRecipient(u); setMobileSidebarOpen(false)}}
+>>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
                 className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition text-left border ${activeRecipient?.user_id === u.user_id? 'bg-indigo-600/10 border-indigo-500/40 text-white shadow-sm' : 'border-transparent text-slate-400 hover:bg-slate-700/40 hover:text-slate-200'}`}
               >
                 <div className="relative shrink-0">
@@ -273,7 +353,11 @@ export default function ChatWindow() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-0.5">
                     <p className="text-sm font-bold truncate text-slate-200">{u.username}</p>
+<<<<<<< HEAD
                     <span className="text-[10px] text-slate-500 font-medium">{u.is_online === 1? 'Online' : 'Offline'}</span>
+=======
+                    <span className="text-[10px] text-slate-500 font-medium">Live</span>
+>>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
                   </div>
                   <p className="text-xs truncate text-slate-400">{u.lastMessageSnippet}</p>
                 </div>
@@ -289,8 +373,13 @@ export default function ChatWindow() {
             <button type="button" onClick={() => setMobileSidebarOpen(true)} className="md:hidden text-slate-400 hover:text-white transition"><MessageCircle size={20} /></button>
             <button type="button" onClick={() => navigate(-1)} className="text-slate-400 hover:text-white transition"><ArrowLeft size={20} /></button>
             <div>
+<<<<<<< HEAD
               <h2 className="font-bold text-sm">Room: {activeRecipient?.username || 'Select a chat'}</h2>
               <p className="text-[10px] text-green-400 font-semibold">● {activeRecipient?.is_online === 1? 'Online' : 'Offline'}</p>
+=======
+              <h2 className="font-bold text-sm">Room: {activeRecipient?.username || 'Core Matrix'}</h2>
+              <p className="text-[10px] text-green-400 font-semibold">● Handshake Live Sync</p>
+>>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
             </div>
           </div>
           <div className="flex items-center gap-4 text-slate-400">
@@ -302,19 +391,32 @@ export default function ChatWindow() {
 
         <div className="flex-1 overflow-y-auto p-4 space-y-3 pb-36">
           {messages.map((msg, i) => {
+<<<<<<< HEAD
             const isMe = msg.senderId === currentUserId;
             const isInferredImage = msg.type === 'image' || msg.content?.match(/\.(jpeg|jpg|gif|png|webp)/i) || msg.content?.includes('/uploads/');
+=======
+            const isMe = msg.senderId.toString() === currentUserId.toString();
+            const isInferredImage = msg.type === 'image' || msg.content.match(/\.(jpeg|jpg|gif|png|webp)/i) || msg.content.includes('/uploads/');
+>>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
 
             return (
               <div key={i} className={`flex ${isMe? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-xs rounded-2xl px-4 py-2.5 text-sm shadow-sm ${isMe? 'bg-indigo-600 text-white rounded-br-none' : 'bg-slate-800 text-slate-200 rounded-bl-none border-slate-700'}`}>
                   {msg.isViewOnce? (
                     <div className="flex flex-col gap-1.5">
+<<<<<<< HEAD
                       <span className="flex items-center gap-1.5 text-xs text-amber-400 font-bold"><ShieldAlert size={14} /> View Once Vault</span>
                       {msg.content === '🔒 Media Content Expired'? (
                         <span className="text-slate-500 italic text-xs">{msg.content}</span>
                       ) : (
                         <button type="button" onClick={() => handleOpenViewOnce(msg.dbId, msg.messageId)} className="flex items-center gap-1 bg-amber-500/20 text-amber-300 px-2 py-1 rounded-lg text-xs hover:bg-amber-500/30 transition mt-1"><Eye size={12} /> Reveal Secret</button>
+=======
+                      <span className="flex items-center gap-1.5 text-xs text-amber-400 font-bold"><ShieldAlert size={14}/> View Once Vault</span>
+                      {msg.content === '🔒 Media Content Expired'? (
+                        <span className="text-slate-500 italic text-xs">{msg.content}</span>
+                      ) : (
+                        <button type="button" onClick={() => handleOpenViewOnce(msg.dbId, msg.messageId)} className="flex items-center gap-1 bg-amber-500/20 text-amber-300 px-2 py-1 rounded-lg text-xs hover:bg-amber-500/30 transition mt-1"><Eye size={12}/> Reveal Secret</button>
+>>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
                       )}
                     </div>
                   ) : (
@@ -326,9 +428,15 @@ export default function ChatWindow() {
                       ) : msg.type === 'video'? (
                         <div className="p-1 bg-slate-900/40 rounded-xl max-w-[240px]"><video src={msg.content} controls className="rounded-lg max-h-48 w-full" /></div>
                       ) : msg.type === 'audio'? (
+<<<<<<< HEAD
                         <div className="p-1.5 bg-slate-900/40 rounded-xl flex-col gap-1 w-48"><div className="flex items-center gap-2 text-emerald-400 text-xs font-bold"><Mic size={14} /> Recorded Audio</div><audio src={msg.content} controls className="w-full h-8 mt-1 scale-95 origin-left" /></div>
                       ) : (
                         <span>{msg.content}</span>
+=======
+                        <div className="p-1.5 bg-slate-900/40 rounded-xl flex-col gap-1 w-48"><div className="flex items-center gap-2 text-emerald-400 text-xs font-bold"><Mic size={14}/> Recorded Audio</div><audio src={msg.content} controls className="w-full h-8 mt-1 scale-95 origin-left" /></div>
+                      ) : (
+                        <span>{msg.content || msg.text}</span>
+>>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
                       )}
                     </div>
                   )}
