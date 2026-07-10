@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { getDatabase } from './db';
+import { supabase } from './server';
 
 // 1. UPDATE USER ACCOUNT RESTRICTION STATUS (None, Restricted, Spam_Flagged, Banned)
 export async function updateUserRestriction(req: Request, res: Response) {
@@ -7,23 +7,30 @@ export async function updateUserRestriction(req: Request, res: Response) {
     const { targetUserId, newStatus } = req.body;
 
     const validStatuses = ['None', 'Restricted', 'Spam_Flagged', 'Banned'];
-    if (!targetUserId ||!validStatuses.includes(newStatus)) {
+    if (!targetUserId || !validStatuses.includes(newStatus)) {
       return res.status(400).json({ error: "Invalid target user ID or restriction status payload." });
     }
 
-    const db = await getDatabase();
+    // 1. Check if user exists
+    const { data: userExists, error: findError } = await supabase
+      .from('users')
+      .select('username')
+      .eq('user_id', targetUserId)
+      .single();
 
-    const userExists = await db.get('SELECT username FROM users WHERE user_id =?', [targetUserId]);
-    if (!userExists) {
+    if (findError || !userExists) {
       return res.status(404).json({ error: "Target creator account not found." });
     }
 
-    await db.run(
-      'UPDATE users SET restriction_status =?, is_online = 0 WHERE user_id =?',
-      [newStatus, targetUserId]
-    );
+    // 2. Update restriction status + force offline
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ restriction_status: newStatus, is_online: 0 })
+      .eq('user_id', targetUserId);
 
-    // Force disconnect their socket session immediately if restricted/banned
+    if (updateError) throw updateError;
+
+    // 3. Force disconnect their socket session immediately if restricted/banned
     if (newStatus === 'Banned' || newStatus === 'Restricted') {
       const io = req.app.get('io');
       if (io) {
@@ -37,27 +44,26 @@ export async function updateUserRestriction(req: Request, res: Response) {
       details: { targetUserId, status: newStatus }
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("🔴 Moderation Error:", error);
-    return res.status(500).json({ error: "Internal server moderation loop failure." });
+    return res.status(500).json({ error: error.message || "Internal server moderation loop failure." });
   }
 }
 
 // 2. FETCH ALL SPAM-FLAGGED OR RESTRICTED ACCOUNTS FOR ADMIN VIEW
 export async function getFlaggedAccounts(req: Request, res: Response) {
   try {
-    const db = await getDatabase();
+    const { data: flaggedUsers, error } = await supabase
+      .from('users')
+      .select('user_id, username, email, phone_number, restriction_status')
+      .in('restriction_status', ['Restricted', 'Spam_Flagged', 'Banned'])
+      .or('restriction_status.is.null'); // to also catch NULL like in your old query
 
-    const flaggedUsers = await db.all(`
-      SELECT user_id, username, email, phone_number, restriction_status
-      FROM users
-      WHERE restriction_status IN ('Restricted', 'Spam_Flagged', 'Banned')
-         OR restriction_status IS NULL
-    `);
+    if (error) throw error;
 
     return res.json(flaggedUsers);
-  } catch (error) {
+  } catch (error: any) {
     console.error("🔴 Get Flagged Accounts Error:", error);
-    return res.status(500).json({ error: "Failed to retrieve restricted database entries." });
+    return res.status(500).json({ error: error.message || "Failed to retrieve restricted database entries." });
   }
 }

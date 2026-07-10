@@ -25,7 +25,7 @@ export default function Homepage() {
 
   const currentUserId = localStorage.getItem('userId');
   const currentUsername = localStorage.getItem('username') || 'You';
-}
+
   useEffect(() => {
     if (!currentUserId) {
       navigate('/login');
@@ -52,7 +52,7 @@ export default function Homepage() {
       if (error) throw error;
 
       const enrichedPosts = await Promise.all(
-        postsData.map(async (post: any) => {
+        (postsData || []).map(async (post: any) => {
           const { count: likes } = await supabase
           .from('post_reactions')
           .select('*', { count: 'exact', head: true })
