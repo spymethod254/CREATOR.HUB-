@@ -32,7 +32,7 @@ export default function Homepage() {
       return;
     }
     fetchFeedPosts();
-  }, [currentUserId, navigate]); // <-- added navigate to deps
+  }, [currentUserId, navigate]);
 
   const fetchFeedPosts = async () => {
     try {

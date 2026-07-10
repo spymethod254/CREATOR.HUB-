@@ -4,7 +4,7 @@ import {
   ArrowLeft, ShieldCheck, Mail, Phone, 
   Briefcase, Heart, ThumbsUp, MessageCircle, X, Camera
 } from 'lucide-react';
-import { supabase } from './supabaseClient'; // <-- 1. ADD THIS
+import { supabase } from './supabaseClient';
 
 export default function UserProfile() {
   const navigate = useNavigate();
@@ -42,7 +42,6 @@ export default function UserProfile() {
     try {
       setLoading(true);
       
-      // 2. GET USER PROFILE FROM SUPABASE
       const { data: profile, error: profileError } = await supabase
        .from('users')
        .select('*')
@@ -51,7 +50,6 @@ export default function UserProfile() {
 
       if (profileError) throw profileError;
 
-      // 3. GET FOLLOW STATS
       const { count: followers } = await supabase
        .from('follows')
        .select('*', { count: 'exact', head: true })
@@ -62,7 +60,6 @@ export default function UserProfile() {
        .select('*', { count: 'exact', head: true })
        .eq('follower_id', targetProfileId);
 
-      // 4. CHECK IF CURRENT USER FOLLOWS
       if (currentUserId!== targetProfileId) {
         const { data: followCheck } = await supabase
          .from('follows')
@@ -73,7 +70,6 @@ export default function UserProfile() {
         setIsFollowing(!!followCheck);
       }
 
-      // 5. GET USER POSTS
       const { data: posts } = await supabase
        .from('posts')
        .select('*')
@@ -129,7 +125,6 @@ export default function UserProfile() {
     setUploadingAvatar(true);
 
     try {
-      // 6. UPLOAD TO SUPABASE STORAGE
       const fileExt = file.name.split('.').pop();
       const fileName = `${targetProfileId}/avatar.${fileExt}`;
       
@@ -142,9 +137,9 @@ export default function UserProfile() {
       const { data } = supabase.storage
        .from("avatars")
        .getPublicUrl(fileName);
+
       const publicUrl = data.publicUrl;
 
-      // 7. UPDATE USER TABLE WITH NEW URL
       const { error: updateError } = await supabase
        .from('users')
        .update({ profile_picture_url: publicUrl })
