@@ -1,9 +1,6 @@
 import { Request, Response } from 'express';
-<<<<<<< HEAD
 import { supabase } from './server';
-=======
 import { getDatabase } from './db';
->>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
 
 // 1. UPDATE USER ACCOUNT RESTRICTION STATUS (None, Restricted, Spam_Flagged, Banned)
 export async function updateUserRestriction(req: Request, res: Response) {
@@ -11,7 +8,6 @@ export async function updateUserRestriction(req: Request, res: Response) {
     const { targetUserId, newStatus } = req.body;
 
     const validStatuses = ['None', 'Restricted', 'Spam_Flagged', 'Banned'];
-<<<<<<< HEAD
     if (!targetUserId || !validStatuses.includes(newStatus)) {
       return res.status(400).json({ error: "Invalid target user ID or restriction status payload." });
     }
@@ -36,7 +32,6 @@ export async function updateUserRestriction(req: Request, res: Response) {
     if (updateError) throw updateError;
 
     // 3. Force disconnect their socket session immediately if restricted/banned
-=======
     if (!targetUserId ||!validStatuses.includes(newStatus)) {
       return res.status(400).json({ error: "Invalid target user ID or restriction status payload." });
     }
@@ -54,7 +49,6 @@ export async function updateUserRestriction(req: Request, res: Response) {
     );
 
     // Force disconnect their socket session immediately if restricted/banned
->>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
     if (newStatus === 'Banned' || newStatus === 'Restricted') {
       const io = req.app.get('io');
       if (io) {
@@ -68,22 +62,18 @@ export async function updateUserRestriction(req: Request, res: Response) {
       details: { targetUserId, status: newStatus }
     });
 
-<<<<<<< HEAD
   } catch (error: any) {
     console.error("🔴 Moderation Error:", error);
     return res.status(500).json({ error: error.message || "Internal server moderation loop failure." });
-=======
   } catch (error) {
     console.error("🔴 Moderation Error:", error);
     return res.status(500).json({ error: "Internal server moderation loop failure." });
->>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
   }
 }
 
 // 2. FETCH ALL SPAM-FLAGGED OR RESTRICTED ACCOUNTS FOR ADMIN VIEW
 export async function getFlaggedAccounts(req: Request, res: Response) {
   try {
-<<<<<<< HEAD
     const { data: flaggedUsers, error } = await supabase
       .from('users')
       .select('user_id, username, email, phone_number, restriction_status')
@@ -96,7 +86,6 @@ export async function getFlaggedAccounts(req: Request, res: Response) {
   } catch (error: any) {
     console.error("🔴 Get Flagged Accounts Error:", error);
     return res.status(500).json({ error: error.message || "Failed to retrieve restricted database entries." });
-=======
     const db = await getDatabase();
 
     const flaggedUsers = await db.all(`
@@ -110,6 +99,5 @@ export async function getFlaggedAccounts(req: Request, res: Response) {
   } catch (error) {
     console.error("🔴 Get Flagged Accounts Error:", error);
     return res.status(500).json({ error: "Failed to retrieve restricted database entries." });
->>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
   }
 }

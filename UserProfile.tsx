@@ -4,11 +4,8 @@ import {
   ArrowLeft, ShieldCheck, Mail, Phone, 
   Briefcase, Heart, ThumbsUp, MessageCircle, X, Camera
 } from 'lucide-react';
-<<<<<<< HEAD
 import { supabase } from './supabaseClient';
-=======
-import { supabase } from './supabaseClient'; // <-- 1. ADD THIS
->>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
+import { supabase } from './supabaseClient';
 
 export default function UserProfile() {
   const navigate = useNavigate();
@@ -46,10 +43,7 @@ export default function UserProfile() {
     try {
       setLoading(true);
       
-<<<<<<< HEAD
-=======
       // 2. GET USER PROFILE FROM SUPABASE
->>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
       const { data: profile, error: profileError } = await supabase
        .from('users')
        .select('*')
@@ -58,10 +52,7 @@ export default function UserProfile() {
 
       if (profileError) throw profileError;
 
-<<<<<<< HEAD
-=======
       // 3. GET FOLLOW STATS
->>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
       const { count: followers } = await supabase
        .from('follows')
        .select('*', { count: 'exact', head: true })
@@ -72,10 +63,7 @@ export default function UserProfile() {
        .select('*', { count: 'exact', head: true })
        .eq('follower_id', targetProfileId);
 
-<<<<<<< HEAD
-=======
       // 4. CHECK IF CURRENT USER FOLLOWS
->>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
       if (currentUserId!== targetProfileId) {
         const { data: followCheck } = await supabase
          .from('follows')
@@ -86,10 +74,7 @@ export default function UserProfile() {
         setIsFollowing(!!followCheck);
       }
 
-<<<<<<< HEAD
-=======
       // 5. GET USER POSTS
->>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
       const { data: posts } = await supabase
        .from('posts')
        .select('*')
@@ -145,10 +130,7 @@ export default function UserProfile() {
     setUploadingAvatar(true);
 
     try {
-<<<<<<< HEAD
-=======
       // 6. UPLOAD TO SUPABASE STORAGE
->>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
       const fileExt = file.name.split('.').pop();
       const fileName = `${targetProfileId}/avatar.${fileExt}`;
       
@@ -161,15 +143,12 @@ export default function UserProfile() {
       const { data } = supabase.storage
        .from("avatars")
        .getPublicUrl(fileName);
-<<<<<<< HEAD
 
       const publicUrl = data.publicUrl;
 
-=======
       const publicUrl = data.publicUrl;
 
       // 7. UPDATE USER TABLE WITH NEW URL
->>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
       const { error: updateError } = await supabase
        .from('users')
        .update({ profile_picture_url: publicUrl })
@@ -334,8 +313,5 @@ export default function UserProfile() {
       )}
     </div>
   );
-<<<<<<< HEAD
 }
-=======
 }
->>>>>>> bb04b15be8c7e317e14f69e42aeb1a9740ebe2d4
