@@ -1,45 +1,43 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Home, Compass, Video, MessageSquare, ThumbsUp, MessageCircle, Share2, Award, LogOut } from 'lucide-react';
+import { Award, MessageCircle, ThumbsUp } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
-interface Post {
+type Post = {
   post_id: number;
   user_id: string;
-  username: string;
-  profile_picture_url: string;
   content: string;
-  media_url?: string;
-  is_admin_featured: number;
+  media_url?: string | null;
+  is_admin_featured?: number | null;
+  created_at?: string;
+  username?: string | null;
+  profile_picture_url?: string | null;
   likes_count?: number;
   comments_count?: number;
-  user_has_liked?: boolean;
-}
+};
 
 export default function Homepage() {
   const navigate = useNavigate();
   const [posts, setPosts] = useState<Post[]>([]);
   const [newPostContent, setNewPostContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const currentUserId = localStorage.getItem('userId');
-  const currentUsername = localStorage.getItem('username') || 'You';
-}
+  const currentUserId = localStorage.getItem('userId') || '';
+
   useEffect(() => {
     if (!currentUserId) {
       navigate('/login');
       return;
     }
     fetchFeedPosts();
-  }, [currentUserId, navigate]);
-  }, [currentUserId, navigate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUserId]);
 
   const fetchFeedPosts = async () => {
     try {
       const { data: postsData, error } = await supabase
-      .from('posts')
-      .select(`
+        .from('posts')
+        .select(`
           post_id,
           user_id,
           content,
@@ -48,55 +46,56 @@ export default function Homepage() {
           created_at,
           users ( username, profile_picture_url )
         `)
-      .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
 
       const enrichedPosts = await Promise.all(
         (postsData || []).map(async (post: any) => {
-        postsData.map(async (post: any) => {
-          const { count: likes } = await supabase
-          .from('post_reactions')
-          .select('*', { count: 'exact', head: true })
-          .eq('post_id', post.post_id);
+          const { count: likesCount } = await supabase
+            .from('post_reactions')
+            .select('*', { count: 'exact', head: true })
+            .eq('post_id', post.post_id);
 
-          const { count: comments } = await supabase
-          .from('post_comments')
-          .select('*', { count: 'exact', head: true })
-          .eq('post_id', post.post_id);
+          const { count: commentsCount } = await supabase
+            .from('post_comments')
+            .select('*', { count: 'exact', head: true })
+            .eq('post_id', post.post_id);
 
           return {
-          ...post,
-            username: post.users?.username,
-            profile_picture_url: post.users?.profile_picture_url,
-            likes_count: likes || 0,
-            comments_count: comments || 0
-          };
+            post_id: post.post_id,
+            user_id: post.user_id,
+            content: post.content,
+            media_url: post.media_url,
+            is_admin_featured: post.is_admin_featured,
+            created_at: post.created_at,
+            username: post.users?.username ?? 'Anonymous',
+            profile_picture_url: post.users?.profile_picture_url ?? null,
+            likes_count: likesCount ?? 0,
+            comments_count: commentsCount ?? 0
+          } as Post;
         })
       );
 
       setPosts(enrichedPosts);
     } catch (err) {
-      console.error("Error loading network feed:", err);
+      console.error('Error loading network feed:', err);
     }
   };
 
   const handlePublishPost = async () => {
     if (!newPostContent.trim()) return;
     setIsSubmitting(true);
-
     try {
       const { error } = await supabase.from('posts').insert({
         user_id: currentUserId,
         content: newPostContent
       });
-
       if (error) throw error;
-
       setNewPostContent('');
       fetchFeedPosts();
     } catch (err: any) {
-      alert(err.message);
+      alert(err.message || 'Failed to publish post');
     } finally {
       setIsSubmitting(false);
     }
@@ -104,125 +103,87 @@ export default function Homepage() {
 
   const handleToggleLike = async (postId: number) => {
     try {
-      const { error } = await supabase.from('post_reactions').insert({
-        post_id: postId,
-        user_id: currentUserId
-      });
-
-      if (error && error.code === '23505') { // unique violation = already liked
-        await supabase.from('post_reactions')
-        .delete()
+      const { data: existing } = await supabase
+        .from('post_reactions')
+        .select('id')
         .eq('post_id', postId)
-        .eq('user_id', currentUserId);
+        .eq('user_id', currentUserId)
+        .single();
+
+      if (existing) {
+        await supabase.from('post_reactions').delete().eq('post_id', postId).eq('user_id', currentUserId);
+      } else {
+        await supabase.from('post_reactions').insert({ post_id: postId, user_id: currentUserId });
       }
 
       fetchFeedPosts();
     } catch (err) {
-      console.error("Failed to execute like interaction toggle:", err);
+      console.error('Failed to toggle like', err);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 flex font-sans">
-      <header className="bg-slate-800 border-b border-slate-700 sticky top-0 z-50 px-4 py-2 flex justify-between items-center shadow-md md:hidden">
-        <div className="flex items-center gap-3">
-          <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="text-slate-300 text-xl">
-            ☰
-          </button>
-          <h1 className="text-xl font-black tracking-wider text-indigo-400 cursor-pointer" onClick={() => navigate('/')}>CREATOR.HUB</h1>
-        </div>
-        <div className="flex bg-slate-700 rounded-full px-3 py-1 text-sm border-slate-600">
-          <span className="text-green-400 mr-1.5">●</span> Community Active
-        </div>
-      </header>
-
-      {mobileMenuOpen && (
-        <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setMobileMenuOpen(false)}></div>
-      )}
-
-      <aside className={`fixed top-14 left-0 h-full w-64 p-4 bg-slate-900 border-r border-slate-800 z-50 transform transition-transform md:static md:top-0 md:h-auto md:translate-x-0 ${mobileMenuOpen? 'translate-x-0' : '-translate-x-full'} md:flex flex-col gap-2`}>
-        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-2">Navigation</p>
-        <button type="button" onClick={() => {navigate('/'); setMobileMenuOpen(false)}} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-medium transition w-full text-left"><Home size={18}/> Feed Home</button>
-        <button type="button" onClick={() => {navigate('/profile'); setMobileMenuOpen(false)}} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-slate-200 text-sm font-medium transition w-full text-left"><Compass size={18}/> My Profile</button>
-        <button type="button" onClick={() => {navigate('/chat'); setMobileMenuOpen(false)}} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-slate-200 text-sm font-medium transition w-full text-left"><MessageSquare size={18}/> Chat Rooms</button>
-        <button type="button" onClick={() => { localStorage.clear(); navigate('/login'); }} className="mt-auto flex items-center gap-3 px-3 py-2.5 rounded-xl text-rose-400 hover:bg-rose-950/20 text-sm font-medium transition w-full text-left"><LogOut size={18}/>Sign Out Account</button>
+    <div className="min-h-screen bg-slate-900 text-slate-100 flex">
+      <aside className="w-64 p-4 bg-slate-900 border-r hidden md:block">
+        <h2 className="font-bold text-indigo-400 text-lg">CREATOR.HUB</h2>
       </aside>
 
-      <div className="flex-1 max-w-6xl w-full mx-auto flex-col pb-20 md:pb-0">
-        <main className="flex-1 p-4 overflow-y-auto max-w-2xl mx-auto w-full">
-          <div className="bg-slate-800 rounded-2xl p-4 border-slate-700 mb-5 shadow-sm">
-            <div className="flex gap-3 mb-3">
-              <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center font-bold text-sm shrink-0">
-                {currentUsername.substring(0,2).toUpperCase()}
-              </div>
-              <input
-                type="text"
-                value={newPostContent}
-                onChange={(e) => setNewPostContent(e.target.value)}
-                placeholder="Share a post, job update or cross-promotion link..."
-                className="bg-slate-700 w-full rounded-xl px-4 py-2 text-sm text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
-              />
+      <main className="flex-1 max-w-3xl mx-auto p-4">
+        <div className="bg-slate-800 rounded-2xl p-4 mb-6">
+          <div className="flex gap-3 mb-3">
+            <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center font-bold text-sm">
+              {(localStorage.getItem('username') || 'You').substring(0, 2).toUpperCase()}
             </div>
-            <div className="border-t border-slate-700/60 pt-2 flex justify-end">
-              <button
-                type="button"
-                onClick={handlePublishPost}
-                disabled={isSubmitting ||!newPostContent.trim()}
-                className="bg-indigo-500 hover:bg-indigo-600 disabled:bg-slate-700 disabled:text-slate-500 text-white text-xs font-bold px-4 py-2 rounded-lg transition shadow-sm"
-              >
-                {isSubmitting? 'Publishing...' : 'Post Update'}
-              </button>
-            </div>
+            <input
+              type="text"
+              value={newPostContent}
+              onChange={(e) => setNewPostContent(e.target.value)}
+              placeholder="Share an update..."
+              className="flex-1 bg-slate-700 rounded-xl px-4 py-2 text-sm"
+            />
           </div>
+          <div className="flex justify-end">
+            <button onClick={handlePublishPost} disabled={isSubmitting || !newPostContent.trim()} className="bg-indigo-500 px-4 py-2 rounded-lg">
+              {isSubmitting ? 'Publishing...' : 'Post Update'}
+            </button>
+          </div>
+        </div>
 
-          <div className="flex flex-col gap-4 min-h-[50vh]">
-            {posts.length === 0? (
-              <div className="flex-1 flex items-center justify-center text-slate-500 text-sm">No live updates posted on the feed yet.</div>
-            ) : (
-              posts.map((post) => (
-                <article key={post.post_id} className="bg-slate-800 rounded-2xl border-slate-700 shadow-sm overflow-hidden">
-                  <div className="p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center font-bold border-slate-600 shrink-0">
-                        {post.username? post.username.substring(0, 2).toUpperCase() : 'CC'}
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-sm text-slate-100 hover:underline cursor-pointer" onClick={() => navigate(`/profile/${post.user_id}`)}>{post.username || 'Anonymous'}</h4>
-                        <p className="text-xs text-slate-400">Creator Hub Member</p>
-                      </div>
+        <div className="space-y-4">
+          {posts.length === 0 ? (
+            <div className="text-center text-slate-500">No posts yet</div>
+          ) : (
+            posts.map((post) => (
+              <article key={post.post_id} className="bg-slate-800 rounded-2xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center font-bold">
+                      {post.username?.substring(0, 2).toUpperCase() ?? 'CC'}
                     </div>
-                    {post.is_admin_featured === 1 && (
-                      <span className="flex items-center gap-1 text-[10px] uppercase font-black bg-amber-500/10 text-amber-400 px-2 py-1 rounded-md border-amber-500/20">
-                        <Award size={12}/> Featured
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="px-4 pb-3 text-sm text-slate-300 leading-relaxed">
-                    {post.content}
-                  </div>
-
-                  <div className="px-4 py-2.5 bg-slate-800/50 border-t border-slate-700/60 flex items-center justify-between text-xs font-semibold text-slate-400">
-                    <button type="button" onClick={() => handleToggleLike(post.post_id)} className="flex items-center gap-1.5 hover:text-indigo-400 transition">
-                      <ThumbsUp size={14}/> {post.likes_count || 0} Likes
-                    </button>
-                    <div className="flex items-center gap-1.5">
-                      <MessageCircle size={14}/> {post.comments_count || 0} Comments
+                    <div>
+                      <div className="font-bold">{post.username}</div>
+                      <div className="text-xs text-slate-400">Creator Hub Member</div>
                     </div>
                   </div>
-                </article>
-              ))
-            )}
-          </div>
-        </main>
-      </div>
+                  {post.is_admin_featured === 1 && (
+                    <span className="text-amber-400 text-xs font-bold flex items-center gap-1"><Award size={12}/>Featured</span>
+                  )}
+                </div>
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-slate-800 border-t border-slate-700 flex justify-around py-2 md:hidden z-50">
-        <button onClick={() => navigate('/')} className="flex flex-col items-center text-indigo-400 text-xs"><Home size={20}/>Feed</button>
-        <button onClick={() => navigate('/profile')} className="flex flex-col items-center text-slate-400 text-xs"><Compass size={20}/>Profile</button>
-        <button onClick={() => navigate('/chat')} className="flex flex-col items-center text-slate-400 text-xs"><MessageSquare size={20}/>Chat</button>
-      </nav>
+                <div className="text-slate-300 mb-3">{post.content}</div>
+                {post.media_url && <img src={post.media_url} alt="media" className="max-h-60 rounded-lg mb-3 w-full object-cover" />}
+
+                <div className="flex items-center justify-between text-xs text-slate-400">
+                  <button onClick={() => handleToggleLike(post.post_id)} className="flex items-center gap-2">
+                    <ThumbsUp size={14} /> {post.likes_count ?? 0}
+                  </button>
+                  <div className="flex items-center gap-2"><MessageCircle size={14}/> {post.comments_count ?? 0}</div>
+                </div>
+              </article>
+            ))
+          )}
+        </div>
+      </main>
     </div>
   );
-}
 }
